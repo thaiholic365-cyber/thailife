@@ -862,7 +862,7 @@ function renderMembers(){
   '<h3 style="margin-bottom:4px">👥 회원 관리</h3>'+
   '<p class="hint">차단 시 글쓰기·채팅이 막히고 기존 글이 숨겨집니다. 탈퇴는 회원 기록을 삭제합니다.</p>'+
   (names.length?'<div class="tblwrap"><table class="mtable"><thead><tr>'+
-  '<th>닉네임</th><th>레벨</th><th>실명</th><th>핸드폰</th><th>이메일</th><th>상태</th><th>가입</th><th>최근 접속</th><th>접속</th><th>게시글</th><th>채팅</th><th>활동 지역</th><th>관리</th></tr></thead><tbody>'+
+  '<th>닉네임</th><th>레벨</th><th>실명</th><th>핸드폰</th><th>상태</th><th>가입</th><th>최근 접속</th><th>접속</th><th>게시글</th><th>채팅</th><th>활동 지역</th><th>관리</th></tr></thead><tbody>'+
   names.map(n=>{
     const u=m[n];
     const acct=cS('tl_users',{})[n]||{};
@@ -875,7 +875,7 @@ function renderMembers(){
     '</select></td>'+
     '<td>'+esc2(acct.name||'-')+'</td>'+
     '<td style="white-space:nowrap">'+esc2(acct.phone||'-')+'</td>'+
-    '<td style="font-size:11.5px">'+esc2(acct.email||'-')+'</td>'+
+    
     '<td>'+(u.blocked?'<span class="pill no">차단</span>':'<span class="pill ok">정상</span>')+'</td>'+
     '<td>'+new Date(u.joined).toLocaleDateString('ko-KR')+'</td>'+
     '<td>'+ago(u.lastSeen)+'</td>'+

@@ -263,7 +263,7 @@ body{background:
     </div>
 
     <div id="loginForm">
-      <label class="f">닉네임</label><input class="f" id="liNick" onkeydown="if(event.key==='Enter')doLogin()">
+      <label class="f">핸드폰번호</label><input class="f" id="liNick" placeholder="예: 010-1234-5678" onkeydown="if(event.key==='Enter')doLogin()">
       <label class="f">비밀번호</label><input class="f" type="password" id="liPw" onkeydown="if(event.key==='Enter')doLogin()">
       <div class="autherr" id="liErr"></div>
       <button class="btn btn-gold" style="width:100%;padding:12px" onclick="doLogin()">로그인</button>
@@ -276,8 +276,7 @@ body{background:
       <input class="f" id="suName" maxlength="20" placeholder="예: 김철수">
       <label class="f">핸드폰번호 *</label>
       <input class="f" id="suPhone" placeholder="예: 010-1234-5678 또는 +66-81-234-5678">
-      <label class="f">이메일 *</label>
-      <input class="f" id="suEmail" type="email" placeholder="예: name@example.com">
+      
       <label class="f">비밀번호 * <span style="font-weight:400">(4자 이상)</span></label>
       <input class="f" type="password" id="suPw">
       <div class="authnote">⚠️ <b>본명(실명)을 정확히 기재해야 가입할 수 있습니다.</b> 허위 기재 시 이용이 제한될 수 있으며, 실명·연락처는 운영진의 회원 관리 목적에만 사용됩니다.</div>
@@ -335,6 +334,16 @@ const REGIONS=['방콕','파타야','치앙마이','치앙라이','빠이','콘�
 /* ============ 닉네임 ============ */
 const COLORS=['#f08a3e','#ef7433','#d94f97','#1aa578','#4485e6','#8f5ce0','#e0a032'];
 function nickColor(n){ let h=0; for(const c of n) h=(h*31+c.charCodeAt(0))>>>0; return COLORS[h%COLORS.length]; }
+
+/* 전화번호 → 내부 인증용 주소 (숫자만 추출, 국가번호 정규화) */
+function phoneToEmail(phone){
+  let d=String(phone).replace(/[^0-9]/g,'');
+  if(d.startsWith('82')) d='0'+d.slice(2);        // +82 10... → 010...
+  else if(d.startsWith('66')) d='0'+d.slice(2);   // +66 81... → 081...
+  d=d.replace(/^0+/,'0');
+  return d+'@tl.local';
+}
+
 /* ===== 회원가입 / 로그인 (Supabase) ===== */
 function getNick(){ return TL.nick(); }
 function users(){ return {}; }
@@ -356,30 +365,31 @@ function authTab(t){
 }
 async function doSignup(){
   const nick=$('suNick').value.trim(), name=$('suName').value.trim(),
-        phone=$('suPhone').value.trim(), email=$('suEmail').value.trim(), pw=$('suPw').value;
+        phone=$('suPhone').value.trim(), pw=$('suPw').value;
   const err=m=>{ $('suErr').textContent=m; };
   if(nick.length<2) return err('닉네임을 2자 이상 입력해주세요.');
   if(/관리자|운영자|admin|staff/i.test(nick)) return err('해당 닉네임은 사용할 수 없습니다. (관리자 사칭 방지)');
   if(!/^[가-힣a-zA-Z][가-힣a-zA-Z\s·]{1,19}$/.test(name)) return err('실명(본명)을 정확히 입력해주세요.');
   const digits=phone.replace(/[^0-9]/g,'');
   if(digits.length<9||digits.length>13) return err('올바른 핸드폰번호를 입력해주세요.');
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return err('올바른 이메일 주소를 입력해주세요.');
   if(pw.length<6) return err('비밀번호는 6자 이상이어야 합니다.');
   err('가입 처리 중…');
   try{
-    await TL.signUp({nick,name,phone,email,password:pw});
-    closeAuth(); await refreshAll();
+    await TL.signUp({nick,name,phone,email:phoneToEmail(phone),password:pw});
+    closeAuth(); await refreshAll(); await go(cur);
     toast(nick+'님, 가입을 환영합니다! 🙌');
   }catch(e){ err(e.message); }
 }
 async function doLogin(){
-  const email=$('liNick').value.trim(), pw=$('liPw').value;
+  const phone=$('liNick').value.trim(), pw=$('liPw').value;
+  const digits=phone.replace(/[^0-9]/g,'');
+  if(digits.length<9){ $('liErr').textContent='핸드폰번호를 정확히 입력해주세요.'; return; }
   $('liErr').textContent='로그인 중…';
   try{
-    await TL.signIn(email,pw);
-    closeAuth(); await refreshAll();
+    await TL.signIn(phoneToEmail(phone),pw);
+    closeAuth(); await refreshAll(); await go(cur);
     toast('환영합니다!');
-  }catch(e){ $('liErr').textContent=e.message; }
+  }catch(e){ $('liErr').textContent='핸드폰번호 또는 비밀번호가 올바르지 않습니다.'; }
 }
 async function logout(){
   if(!confirm('로그아웃할까요?')) return;
