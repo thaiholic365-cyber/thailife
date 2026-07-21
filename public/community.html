@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>타이라이프 · 태국 커뮤니티</title>
+<style>
+:root{
+  --bg:#e9efe8; --panel:#f7faf5; --panel2:#e2eae1; --line:#c6d6c9;
+  --ink:#243c40; --sub:#63796f; --gold:#f08a3e; --red:#d95566;
+  --c-food:#ef7433; --c-night:#d94f97; --c-spa:#1aa578; --c-sight:#e0a032; --c-stay:#4485e6;
+  --mint:#1aa578;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif}
+a{color:var(--gold)}
+button{font-family:inherit}
+
+/* ===== 헤더 ===== */
+header{position:sticky;top:0;z-index:900;background:rgba(247,250,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1280px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px}
+.logo{font-weight:900;font-size:19px;white-space:nowrap;cursor:pointer}
+.logo em{font-style:normal;color:var(--gold)}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1}
+nav::-webkit-scrollbar{display:none}
+.nbtn{flex:0 0 auto;border:none;background:none;color:var(--sub);font-size:13.5px;font-weight:700;
+  padding:8px 12px;border-radius:9px;cursor:pointer;transition:.15s}
+.nbtn.on{background:var(--panel);color:var(--gold)}
+.nbtn:hover{color:var(--ink)}
+.mebtn{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+.mebtn b{color:var(--gold)}
+
+/* ===== 레이아웃: 본문 + 채팅 사이드바 ===== */
+.shell{max-width:1280px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:1020px){
+  .shell{grid-template-columns:minmax(0,1fr) 330px}
+  #chatDock{position:sticky;top:74px;height:calc(100vh - 92px)}
+}
+
+/* ===== 채팅 ===== */
+#chatDock{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:420px}
+.chathead{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.livedot{width:9px;height:9px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.chathead b{font-size:14.5px}
+.chathead small{color:var(--sub);margin-left:auto;font-size:11.5px}
+#chatBody{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:9px}
+.msg{display:flex;gap:8px;align-items:flex-start}
+.avatar{flex:0 0 30px;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:900;color:#fff}
+.mbody{max-width:82%}
+.mname{font-size:11px;color:var(--sub);margin-bottom:2px}
+.mtext{background:var(--panel2);border:1px solid var(--line);border-radius:3px 11px 11px 11px;padding:8px 11px;font-size:13px;line-height:1.5;word-break:break-word}
+.msg.mine{flex-direction:row-reverse}
+.msg.mine .mtext{background:#daecdf;border-color:#b6d4bf;border-radius:11px 3px 11px 11px}
+.msg.mine .mname{text-align:right}
+.sysmsg{text-align:center;color:var(--sub);font-size:11.5px;padding:2px 0}
+.chatin{display:flex;gap:8px;padding:11px;border-top:1px solid var(--line)}
+.chatin input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:11px 15px;font-size:13.5px;font-family:inherit}
+.chatin input:focus{outline:none;border-color:var(--gold)}
+.chatin button{border:none;background:var(--gold);color:#2a1c08;font-weight:900;border-radius:999px;padding:0 17px;font-size:13.5px;cursor:pointer}
+
+/* 모바일 플로팅 채팅 */
+#chatFab{display:none}
+@media(max-width:1019px){
+  #chatDock{position:fixed;inset:auto 10px 10px 10px;top:70px;z-index:950;transform:translateY(110%);transition:.28s;box-shadow:0 -8px 34px rgba(29,58,63,.18)}
+  #chatDock.open{transform:translateY(0)}
+  #chatFab{display:flex;position:fixed;right:14px;bottom:16px;z-index:940;border:none;background:var(--gold);color:#2a1c08;
+    border-radius:999px;padding:13px 18px;font-size:14px;font-weight:900;cursor:pointer;align-items:center;gap:7px;box-shadow:0 6px 22px rgba(240,138,62,.32)}
+  #chatFab .dot{width:8px;height:8px;border-radius:50%;background:#171126;animation:pulse 1.6s infinite}
+  .chatclose{display:block!important}
+}
+.chatclose{display:none;border:none;background:none;color:var(--sub);font-size:19px;cursor:pointer;margin-left:6px}
+
+/* ===== 공통 컴포넌트 ===== */
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(29,58,63,.05)}
+.section-title{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+.section-title h2{font-size:19px;font-weight:900}
+.section-title small{color:var(--sub);font-size:12px}
+.btn{border:none;border-radius:10px;padding:10px 15px;font-size:13px;font-weight:800;cursor:pointer;transition:.15s}
+.btn:hover{opacity:.88}
+.btn-gold{background:var(--gold);color:#2a1c08}
+.btn-line{background:transparent;border:1px solid var(--line);color:var(--sub)}
+.btn-red{background:transparent;border:1px solid var(--red);color:var(--red)}
+.btn-mint{background:var(--mint);color:#171126}
+.btn-sm{padding:6px 11px;font-size:11.5px;border-radius:8px}
+.chip{border:1px solid var(--line);background:var(--panel2);color:var(--sub);border-radius:999px;
+  padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+.chip.on{background:var(--gold);border-color:var(--gold);color:#2a1c08}
+.chiprow{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+input.f,select.f,textarea.f{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:10px;padding:10px 12px;font-size:13.5px;font-family:inherit;margin-top:7px}
+input.f:focus,select.f:focus,textarea.f:focus{outline:none;border-color:var(--gold)}
+textarea.f{resize:vertical;min-height:70px;line-height:1.6}
+label.f{display:block;font-size:11.5px;font-weight:800;color:var(--sub);margin-top:11px}
+.empty{color:var(--sub);font-size:13px;text-align:center;padding:36px 10px;line-height:1.8}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--mint);color:#171126;
+  padding:11px 20px;border-radius:999px;font-weight:800;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:2000}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;color:#1c1430}
+
+/* ===== 홈 ===== */
+.hero{background:linear-gradient(135deg,#f7faf5,#dcebdd);border:1px solid var(--line);border-radius:18px;padding:26px 22px;margin-bottom:16px}
+.hero .eyebrow{color:var(--gold);font-size:11px;letter-spacing:.28em;font-weight:800}
+.hero h1{font-size:clamp(23px,5vw,34px);font-weight:900;line-height:1.2;margin:8px 0 10px}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{color:var(--sub);font-size:13.5px;line-height:1.7}
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 13px;cursor:pointer;transition:.16s;border-top:3px solid var(--gold);box-shadow:0 2px 8px rgba(29,58,63,.05)}
+.qcard:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(29,58,63,.1)}
+.qcard .ic{font-size:22px}
+.qcard b{display:block;font-size:13.5px;margin-top:6px}
+.qcard span{display:block;color:var(--sub);font-size:11px;margin-top:3px}
+.feed{display:grid;gap:10px}
+.feeditem{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;transition:.15s}
+.feeditem:hover{border-color:#2c525a}
+.feeditem b{font-size:13.5px}
+.feeditem .meta{color:var(--sub);font-size:11.5px;margin-top:4px}
+
+/* ===== 게시글 카드 ===== */
+.post{background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:10px;border-left:4px solid var(--line)}
+.post-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.post-title{font-weight:800;font-size:15px;line-height:1.4}
+.post-meta{color:var(--sub);font-size:11.5px;margin-top:5px}
+.post-body{color:#456b66;font-size:13px;line-height:1.65;margin-top:8px;white-space:pre-wrap;word-break:break-word}
+.post-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.joiners{color:var(--sub);font-size:11.5px;margin-top:8px}
+
+/* ===== 제휴업체 ===== */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:11px}
+.pcard{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:.15s}
+.pcard:hover{transform:translateY(-2px);border-color:#2c525a}
+.pimg{height:110px;background:linear-gradient(135deg,#f6e4cd,#dcebdd);display:flex;align-items:center;justify-content:center;font-size:34px}
+.pimg img{width:100%;height:100%;object-fit:cover}
+.pbody{padding:12px 13px}
+.pbody b{font-size:14px}
+.pbody .desc{color:var(--sub);font-size:12px;line-height:1.55;margin-top:5px}
+.pbtn{display:block;text-align:center;background:var(--mint);color:#171126;font-weight:900;font-size:12.5px;
+  padding:9px;border-radius:9px;text-decoration:none;margin-top:10px}
+
+/* ===== 갤러리 ===== */
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.gitem{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1;background:var(--panel2);cursor:pointer}
+.gitem img{width:100%;height:100%;object-fit:cover;transition:.2s}
+.gitem:hover img{transform:scale(1.05)}
+.gcap{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.8));color:#fff;
+  font-size:11px;padding:16px 9px 8px;font-weight:700}
+#lightbox{position:fixed;inset:0;background:rgba(13,9,24,.93);z-index:1500;display:none;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:12px}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96%;max-height:78vh;border-radius:12px}
+#lbCap{color:var(--ink);font-size:13.5px;font-weight:700}
+
+footer{max-width:1280px;margin:8px auto 0;padding:16px;color:var(--sub);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line)}
+
+/* 인증 모달 */
+#authModal{position:fixed;inset:0;background:rgba(13,9,24,.9);z-index:1600;display:none;align-items:center;justify-content:center;padding:20px}
+#authModal.on{display:flex}
+.authbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px 22px;max-width:380px;width:100%}
+.authtabs{display:flex;gap:8px;margin-bottom:16px}
+.authtab{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--sub);border-radius:10px;
+  padding:10px;font-size:13.5px;font-weight:800;cursor:pointer}
+.authtab.on{background:var(--gold);border-color:var(--gold);color:#2a1c08}
+.authnote{background:var(--panel2);border-left:3px solid var(--gold);border-radius:8px;padding:10px 12px;
+  color:#456b66;font-size:11.5px;line-height:1.6;margin-top:12px}
+.autherr{color:var(--red);font-size:12px;margin-top:10px;min-height:16px;line-height:1.5}
+
+/* 공지 & 답글 */
+.pinned{background:linear-gradient(135deg,#f7edd2,#f0e2ba);border:1px solid var(--gold);border-radius:11px;
+  padding:9px 12px;font-size:12.5px;line-height:1.55;color:#7a4a08;font-weight:800;position:sticky;top:0;z-index:5}
+.noticemsg{background:#f6ecce;border:1px solid #f0c060;border-left:3px solid var(--gold);border-radius:10px;
+  padding:9px 12px;font-size:12.5px;line-height:1.55}
+.noticemsg b{color:#7a4a08}
+.noticemsg .ntime{color:#9a7a3a;font-size:10.5px;margin-top:4px}
+.mfoot{margin-top:4px}
+.rbtn{color:var(--sub);font-size:11px;font-weight:700;cursor:pointer}
+.rbtn:hover{color:var(--gold)}
+.reply{background:var(--panel2);border-left:2px solid var(--line);border-radius:0 9px 9px 9px;
+  padding:6px 10px;font-size:12px;line-height:1.5;margin-top:5px;margin-left:8px;word-break:break-word}
+.reply small{color:var(--sub);font-size:10px}
+.replyin{display:flex;gap:6px;margin-top:6px;margin-left:8px}
+.replyin input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;
+  padding:7px 11px;font-size:12px;font-family:inherit}
+.replyin input:focus{outline:none;border-color:var(--gold)}
+.replyin button{border:none;background:var(--gold);color:#2a1c08;font-weight:900;border-radius:9px;padding:0 12px;font-size:11.5px;cursor:pointer}
+body{background:
+  radial-gradient(1100px 480px at 85% -8%, rgba(240,138,62,.09), transparent 60%),
+  radial-gradient(900px 520px at -12% 28%, rgba(217,79,151,.055), transparent 60%),
+  radial-gradient(760px 420px at 55% 108%, rgba(68,133,230,.05), transparent 60%),
+  var(--bg)}
+
+/* 관리자 메시지 — 특별 스타일 */
+.msg.adminmsg .avatar{background:linear-gradient(135deg,#f08a3e,#e0741f)!important;font-size:15px;
+  box-shadow:0 0 12px rgba(240,138,62,.38)}
+.msg.adminmsg .mname{color:#b06a14;font-weight:900}
+.badge-official{display:inline-block;background:linear-gradient(135deg,#f08a3e,#f5bb72);color:#2a1c08;
+  font-size:9px;font-weight:900;padding:2px 7px;border-radius:999px;margin-left:5px;letter-spacing:.05em;vertical-align:1px}
+.msg.adminmsg .mtext{background:linear-gradient(135deg,#f6ecce,#eedfb4);border:1px solid var(--gold);
+  color:#7a4a00;box-shadow:0 2px 12px rgba(240,138,62,.16);font-weight:600}
+/* 공지 강화 */
+.noticemsg{background:linear-gradient(135deg,#fdf3d8,#f6e5b6);border:1px solid var(--gold);
+  border-left:4px solid var(--gold);box-shadow:0 2px 14px rgba(240,138,62,.16);position:relative;overflow:hidden;color:#4a3510}
+.noticemsg::before{content:'';position:absolute;top:0;left:-70%;width:45%;height:100%;
+  background:linear-gradient(105deg,transparent,rgba(255,255,255,.4),transparent);animation:shine 3.6s infinite}
+@keyframes shine{0%{left:-70%}55%,100%{left:130%}}
+.noticemsg .nicon{font-size:15px;margin-right:3px}
+.pinned{box-shadow:0 3px 12px rgba(240,138,62,.24)}
+
+/* 레벨 배지 */
+.lvb{display:inline-block;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:999px;margin-left:5px;vertical-align:1px;letter-spacing:.02em}
+.lvb.sm{font-size:8.5px;padding:1px 6px}
+.lvb.lv1{background:#e4f6e9;color:#1c8a4b;border:1px solid #9ed9b4}
+.lvb.lv2{background:#e2f0ff;color:#1e64c8;border:1px solid #a4c8f0}
+.lvb.lv3{background:#fff2d6;color:#a06400;border:1px solid #f2cd7e}
+.lvb.lv4{background:#f1e6ff;color:#7a2fc4;border:1px solid #d3b2f2}
+.lvb.lv5{background:linear-gradient(135deg,#ffe9b8,#ffd47e);color:#7a4a00;border:1px solid #e8b84b;box-shadow:0 0 8px rgba(240,185,90,.35)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="logo" onclick="go('home')">🇹🇭 타이<em>라이프</em></div>
+    <nav id="nav"></nav>
+    <button class="mebtn" id="bellBtn" onclick="toggleNotif()" style="position:relative;padding:7px 11px">🔔<span id="bellBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9.5px;font-weight:900;min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:999px;padding:0 4px">0</span></button>
+    <button class="mebtn" onclick="authAction()">👤 <b id="nickShow">로그인</b></button>
+  </div>
+</header>
+
+<div class="shell">
+  <main id="main"></main>
+
+  <!-- 실시간 채팅 (항상 표시) -->
+  <aside id="chatDock">
+    <div class="chathead">
+      <span class="livedot"></span><b>실시간 채팅</b>
+      <small id="chatCnt"></small>
+      <button class="chatclose" onclick="toggleChat(false)">✕</button>
+    </div>
+    <div id="chatBody"></div>
+    <div class="chatin">
+      <input id="chatMsg" placeholder="메시지 입력…" maxlength="300" onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">전송</button>
+    </div>
+  </aside>
+</div>
+
+<button id="chatFab" onclick="toggleChat(true)"><span class="dot"></span>실시간 채팅</button>
+
+<div id="lightbox" onclick="this.classList.remove('on')"><img id="lbImg" src=""><div id="lbCap"></div></div>
+
+<!-- 로그인/회원가입 모달 -->
+<div id="authModal" onclick="if(event.target===this)closeAuth()">
+  <div class="authbox">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;letter-spacing:.26em;color:var(--gold);font-weight:800">THAI LIFE</div>
+      <div style="font-size:18px;font-weight:900;margin-top:4px">타이라이프 회원 인증</div>
+    </div>
+    <div class="authtabs">
+      <button class="authtab on" id="atLogin" onclick="authTab('login')">로그인</button>
+      <button class="authtab" id="atSignup" onclick="authTab('signup')">회원가입</button>
+    </div>
+
+    <div id="loginForm">
+      <label class="f">닉네임</label><input class="f" id="liNick" onkeydown="if(event.key==='Enter')doLogin()">
+      <label class="f">비밀번호</label><input class="f" type="password" id="liPw" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="autherr" id="liErr"></div>
+      <button class="btn btn-gold" style="width:100%;padding:12px" onclick="doLogin()">로그인</button>
+    </div>
+
+    <div id="signupForm" style="display:none">
+      <label class="f">닉네임 * <span style="font-weight:400">(2~12자, 활동명)</span></label>
+      <input class="f" id="suNick" maxlength="12" placeholder="예: 방콕러버">
+      <label class="f">실명 (본명) *</label>
+      <input class="f" id="suName" maxlength="20" placeholder="예: 김철수">
+      <label class="f">핸드폰번호 *</label>
+      <input class="f" id="suPhone" placeholder="예: 010-1234-5678 또는 +66-81-234-5678">
+      <label class="f">이메일 *</label>
+      <input class="f" id="suEmail" type="email" placeholder="예: name@example.com">
+      <label class="f">비밀번호 * <span style="font-weight:400">(4자 이상)</span></label>
+      <input class="f" type="password" id="suPw">
+      <div class="authnote">⚠️ <b>본명(실명)을 정확히 기재해야 가입할 수 있습니다.</b> 허위 기재 시 이용이 제한될 수 있으며, 실명·연락처는 운영진의 회원 관리 목적에만 사용됩니다.</div>
+      <div class="autherr" id="suErr"></div>
+      <button class="btn btn-gold" style="width:100%;padding:12px" onclick="doSignup()">가입하기</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- 내 정보 모달 -->
+<div id="profileModal" onclick="if(event.target===this)closeProfile()" style="position:fixed;inset:0;background:rgba(13,9,24,.9);z-index:1600;display:none;align-items:center;justify-content:center;padding:20px">
+  <div class="authbox" id="profileBody"></div>
+</div>
+
+
+<!-- 알림 패널 -->
+<div id="notifPanel" style="display:none;position:fixed;top:64px;right:12px;width:min(340px,92vw);max-height:70vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 34px rgba(29,58,63,.18);z-index:1400;padding:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <b style="font-size:14px">🔔 알림</b>
+    <button class="btn btn-line btn-sm" onclick="toggleNotif()">닫기 ✕</button>
+  </div>
+  <div id="notifList"></div>
+</div>
+
+<div id="toast"></div>
+
+<footer>
+  타이라이프 — 태국 여행·생활 커뮤니티. 게시물은 작성자에게 책임이 있으며, 업소 이용 시 가격·안전에 유의하세요.
+  <a href="./thailand-travel-map.html">🗺 태국 지도 바로가기</a> · <a href="./thailand-map-admin.html">관리자</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="./tl-api.js"></script>
+<script>
+/* ===== 서버 모드: localStorage 헬퍼를 캐시로 전환 ===== */
+const _cache = {};
+function S(k, d) { return _cache[k] !== undefined ? _cache[k] : d; }
+function SS(k, v) { _cache[k] = v; }
+
+/* ============ 유틸 ============ */
+const $=id=>document.getElementById(id);
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2000); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function timeago(ts){
+  const d=Date.now()-ts;
+  if(d<60000) return '방금';
+  if(d<3600000) return Math.floor(d/60000)+'분 전';
+  if(d<86400000) return Math.floor(d/3600000)+'시간 전';
+  return new Date(ts).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+}
+const REGIONS=['방콕','파타야','치앙마이','치앙라이','빠이','콘깬','우돈타니','부리람','기타'];
+
+/* ============ 닉네임 ============ */
+const COLORS=['#f08a3e','#ef7433','#d94f97','#1aa578','#4485e6','#8f5ce0','#e0a032'];
+function nickColor(n){ let h=0; for(const c of n) h=(h*31+c.charCodeAt(0))>>>0; return COLORS[h%COLORS.length]; }
+/* ===== 회원가입 / 로그인 (Supabase) ===== */
+function getNick(){ return TL.nick(); }
+function users(){ return {}; }
+function updateAuthUI(){
+  const n=getNick();
+  $('nickShow').textContent=n||'로그인';
+  const cm=$('chatMsg');
+  if(cm) cm.placeholder=n?'메시지 입력…':'로그인 후 채팅할 수 있습니다';
+}
+function authAction(){ getNick()?openProfile():openAuth('login'); }
+function openAuth(t){ $('authModal').classList.add('on'); authTab(t||'login'); }
+function closeAuth(){ $('authModal').classList.remove('on'); }
+function authTab(t){
+  $('atLogin').classList.toggle('on',t==='login');
+  $('atSignup').classList.toggle('on',t==='signup');
+  $('loginForm').style.display=t==='login'?'':'none';
+  $('signupForm').style.display=t==='signup'?'':'none';
+  $('liErr').textContent=''; $('suErr').textContent='';
+}
+async function doSignup(){
+  const nick=$('suNick').value.trim(), name=$('suName').value.trim(),
+        phone=$('suPhone').value.trim(), email=$('suEmail').value.trim(), pw=$('suPw').value;
+  const err=m=>{ $('suErr').textContent=m; };
+  if(nick.length<2) return err('닉네임을 2자 이상 입력해주세요.');
+  if(/관리자|운영자|admin|staff/i.test(nick)) return err('해당 닉네임은 사용할 수 없습니다. (관리자 사칭 방지)');
+  if(!/^[가-힣a-zA-Z][가-힣a-zA-Z\s·]{1,19}$/.test(name)) return err('실명(본명)을 정확히 입력해주세요.');
+  const digits=phone.replace(/[^0-9]/g,'');
+  if(digits.length<9||digits.length>13) return err('올바른 핸드폰번호를 입력해주세요.');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return err('올바른 이메일 주소를 입력해주세요.');
+  if(pw.length<6) return err('비밀번호는 6자 이상이어야 합니다.');
+  err('가입 처리 중…');
+  try{
+    await TL.signUp({nick,name,phone,email,password:pw});
+    closeAuth(); await refreshAll();
+    toast(nick+'님, 가입을 환영합니다! 🙌');
+  }catch(e){ err(e.message); }
+}
+async function doLogin(){
+  const email=$('liNick').value.trim(), pw=$('liPw').value;
+  $('liErr').textContent='로그인 중…';
+  try{
+    await TL.signIn(email,pw);
+    closeAuth(); await refreshAll();
+    toast('환영합니다!');
+  }catch(e){ $('liErr').textContent=e.message; }
+}
+async function logout(){
+  if(!confirm('로그아웃할까요?')) return;
+  await TL.signOut();
+  closeProfile(); await refreshAll();
+  toast('로그아웃되었습니다');
+}
+function needNick(){
+  const n=getNick();
+  if(!n){ openAuth('signup'); toast('회원가입 후 이용할 수 있습니다'); }
+  return n;
+}
+function guard(kind){ return needNick(); }
+function members(){ return _cache.tl_members||{}; }
+function isBlocked(n){ const m=members()[n]; return !!(m&&m.blocked); }
+function memberLevel(n){ const m=members()[n]; return (m&&m.level)||1; }
+function touchMember(){}
+
+
+/* 서버 post → 화면 필드 변환 */
+function mapPost(p){
+  return { id:p.id, ts:new Date(p.created_at).getTime(),
+    title:p.title, name:p.title, cap:p.title, body:p.body, desc:p.body,
+    author:p.author, region:p.region, cat:p.cat, kind:p.kind,
+    date:p.date, time:p.time, place:p.place, price:p.price,
+    link:p.link, map:p.map, img:p.img, benefit:p.benefit,
+    soon:p.soon, joiners:p.joiners||[] };
+}
+async function refreshAll(){
+  const ms=await TL.members();
+  _cache.tl_members={};
+  ms.forEach(m=>{ _cache.tl_members[m.nick]={ level:m.level, blocked:m.blocked,
+    posts:m.posts, chats:m.chats, logins:m.logins,
+    joined:new Date(m.created_at).getTime(), lastSeen:new Date(m.last_seen).getTime() }; });
+  _cache.tl_banned=await TL.getSetting('banned',[]);
+  _cache.tl_support=await TL.getSetting('support',{});
+  }
+
+/* ============ 알림 & 쿠폰 (서버) ============ */
+async function updateBadge(){
+  const b=$('bellBadge'); if(!b) return;
+  const cnt=getNick()?await TL.unreadCount():0;
+  b.style.display=cnt>0?'block':'none';
+  b.textContent=cnt>99?'99+':String(cnt);
+}
+async function toggleNotif(){
+  const p=$('notifPanel');
+  if(p.style.display==='none'||!p.style.display){
+    if(!getNick()){ openAuth('login'); toast('로그인 후 알림을 확인할 수 있습니다'); return; }
+    $('notifList').innerHTML='<div class="empty">불러오는 중…</div>';
+    p.style.display='block';
+    const list=await TL.notifs();
+    $('notifList').innerHTML=list.length?list.map(x=>
+      '<div style="padding:10px 8px;border-bottom:1px solid var(--line)">'+
+      '<div style="font-size:13px;font-weight:800">'+(x.icon||'📣')+' '+esc(x.title)+'</div>'+
+      (x.body?'<div style="color:var(--sub);font-size:12px;line-height:1.55;margin-top:3px;white-space:pre-wrap">'+esc(x.body)+'</div>':'')+
+      '<div style="color:var(--sub);font-size:10.5px;margin-top:4px">'+timeago(new Date(x.created_at).getTime())+'</div></div>').join('')
+    :'<div class="empty" style="padding:24px 8px">알림이 없습니다.</div>';
+    await TL.markRead(); updateBadge();
+  } else p.style.display='none';
+}
+async function logBook(name){
+  if(!getNick()) return;
+  await TL.notifSend('@admin','📅','예약 문의 발생',
+    getNick()+' 님이 "'+name+'" 예약·문의 링크를 눌렀습니다.');
+  toast('예약 문의로 연결합니다 🎟');
+}
+
+/* ============ 실시간 채팅 (서버) ============ */
+let _chatCache=[], replyOpen=null;
+function bannedWords(){ return _cache.tl_banned||[]; }
+function findBanned(t){ const low=t.toLowerCase(); return bannedWords().find(w=>w&&low.includes(w.toLowerCase()))||null; }
+function maskBanned(t){ let r=t; bannedWords().forEach(w=>{ if(w) r=r.split(w).join('★'.repeat(w.length)); }); return r; }
+
+async function loadChat(scroll){
+  try{ _chatCache=await TL.chatList(); renderChat(scroll); }catch(e){ console.error(e); }
+}
+function renderChat(scroll){
+  const me=getNick();
+  const a=_chatCache.filter(m=>!isBlocked(m.nick));
+  const b=$('chatBody'); if(!b) return;
+  const notices=a.filter(m=>m.notice);
+  const pin=notices.length?notices[notices.length-1]:null;
+  let html='';
+  if(pin) html+='<div class="pinned">📢 '+esc(maskBanned(pin.text))+'</div>';
+  if(!a.length){
+    html+='<div class="sysmsg">아직 메시지가 없습니다.<br>첫 인사를 남겨보세요! 🙌</div>';
+  } else {
+    html+=a.map(m=>{
+      const ts=new Date(m.created_at).getTime();
+      if(m.notice){
+        return '<div class="noticemsg"><span class="nicon">📢</span><b>공지사항</b><span class="badge-official">OFFICIAL</span><br>'+
+          esc(maskBanned(m.text))+'<div class="ntime">👑 관리자 · '+timeago(ts)+'</div></div>';
+      }
+      const isAdmin=m.is_admin===true||m.nick==='관리자';
+      const mine=m.nick===me;
+      const reps=(m.replies||[]).filter(r=>!isBlocked(r.nick));
+      const repHtml=reps.map(r=>{
+        const ra=r.is_admin||r.nick==='관리자';
+        return '<div class="reply"'+(ra?' style="border-left-color:var(--gold);background:#f6ecce"':'')+'>'+
+        (ra?'<b style="color:var(--gold)">👑 관리자</b><span class="badge-official">OFFICIAL</span> '
+           :'<b style="color:'+nickColor(r.nick)+'">'+esc(r.nick)+'</b>'+lvlBadge(r.nick,1)+' ')+
+        esc(maskBanned(r.text))+' <small>· '+timeago(new Date(r.created_at).getTime())+'</small></div>';
+      }).join('');
+      const replyBox=replyOpen===m.id?
+        '<div class="replyin"><input id="rin'+m.id+'" placeholder="답글 입력…" maxlength="200" '+
+        'onkeydown="if(event.key===\'Enter\')sendReply('+m.id+')">'+
+        '<button onclick="sendReply('+m.id+')">등록</button></div>':'';
+      return '<div class="msg'+(mine?' mine':'')+(isAdmin?' adminmsg':'')+'">'+
+        (isAdmin?'<div class="avatar">👑</div>'
+                :'<div class="avatar" style="background:'+nickColor(m.nick)+'">'+esc(m.nick.slice(0,2))+'</div>')+
+        '<div class="mbody"><div class="mname">'+
+        (isAdmin?'👑 관리자<span class="badge-official">OFFICIAL</span>':esc(m.nick)+lvlBadge(m.nick))+
+        ' · '+timeago(ts)+'</div>'+
+        '<div class="mtext">'+esc(maskBanned(m.text))+'</div>'+
+        '<div class="mfoot"><span class="rbtn" onclick="toggleReply('+m.id+')">💬 답글'+(reps.length?' '+reps.length:'')+'</span></div>'+
+        repHtml+replyBox+'</div></div>';
+    }).join('');
+  }
+  b.innerHTML=html;
+  const total=a.reduce((s,m)=>s+1+((m.replies||[]).length),0);
+  const cc=$('chatCnt'); if(cc) cc.textContent=total?total+'개 메시지':'';
+  if(scroll!==false) b.scrollTop=b.scrollHeight;
+  if(replyOpen!==null){ const i=$('rin'+replyOpen); if(i&&i.focus) i.focus(); }
+}
+function toggleReply(id){
+  if(!getNick()){ openAuth('signup'); toast('회원가입 후 이용할 수 있습니다'); return; }
+  replyOpen=replyOpen===id?null:id;
+  renderChat(false);
+}
+async function sendReply(id){
+  const inp=$('rin'+id); if(!inp) return;
+  const txt=inp.value.trim(); if(!txt) return;
+  if(!needNick()) return;
+  const bw=findBanned(txt);
+  if(bw){ alert('금지어("'+bw+'")가 포함되어 등록할 수 없습니다.'); return; }
+  try{ await TL.replySend(id,txt); replyOpen=null; await loadChat(true); }
+  catch(e){ alert(e.message); }
+}
+async function sendChat(){
+  const inp=$('chatMsg'); const txt=inp.value.trim();
+  if(!txt) return;
+  if(!needNick()) return;
+  const bw=findBanned(txt);
+  if(bw){ alert('금지어("'+bw+'")가 포함되어 전송할 수 없습니다.'); return; }
+  inp.value='';
+  try{ await TL.chatSend(txt); await loadChat(true); }
+  catch(e){ alert(e.message); }
+}
+function toggleChat(){
+  const p=$('chatPanel');
+  p.classList.toggle('on');
+  if(p.classList.contains('on')) loadChat(true);
+}
+
+const PAGES=[
+  {id:'home', lb:'홈'},
+  {id:'map',  lb:'🗺 지도'},
+  {id:'meet', lb:'정모·번개'},
+  {id:'news', lb:'태국뉴스'},
+  {id:'food', lb:'맛집추천'},
+  {id:'partner', lb:'⭐ 제휴업체 ⭐'},
+  {id:'gallery', lb:'갤러리'},
+  {id:'supportCS', lb:'🎧 고객센터'},
+  {id:'supportBK', lb:'📅 예약상담'}
+];
+let cur='home';
+async function go(id){
+  cur=id;
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.toggle('on',b.dataset.id===id));
+  await ({home:renderHome,map:renderMap,meet:renderMeet,news:renderNews,food:renderFood,partner:renderPartner,gallery:renderGallery,supportCS:renderSupportCS,supportBK:renderSupportBK})[id]();
+  window.scrollTo({top:0});
+}
+function renderMap(){
+  const h=Math.max(430,Math.min(660,Math.round(window.innerHeight*0.66)));
+  $('main').innerHTML=
+  '<div class="box" style="padding:11px">'+
+  '<div style="display:flex;align-items:center;gap:9px;padding:2px 4px 9px;flex-wrap:wrap">'+
+  '<b style="font-size:15px">🗺 태국 지도</b>'+
+  '<small style="color:var(--sub);font-size:11.5px">지역별 찾아보기</small>'+
+  '<a href="./thailand-travel-map.html" target="_blank" rel="noopener" style="margin-left:auto;font-size:11.5px;font-weight:800;text-decoration:none">전체화면 ↗</a></div>'+
+  '<iframe src="./thailand-travel-map.html?t='+Date.now()+'" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
+  '</div>';
+}
+$('nav').innerHTML=PAGES.map(p=>'<button class="nbtn" data-id="'+p.id+'" onclick="go(\''+p.id+'\')">'+p.lb+'</button>').join('');
+
+/* ============ 정모·번개 ============ */
+let meetFilter='all', meetRegion='all';
+async function renderMeet(){
+  _cache.tl_meet=(await TL.posts('meet')).map(mapPost);
+  const all=S('tl_meet',[]).filter(p=>!isBlocked(p.author));
+  const list=all.filter(m=>(meetFilter==='all'||m.kind===meetFilter)&&(meetRegion==='all'||m.region===meetRegion))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const me=getNick();
+
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🤝 정모 · 번개</h2><small>오프라인 모임을 만들고 참여하세요</small></div>'+
+  '<div class="chiprow">'+
+    ['all','정모','번개'].map(k=>'<button class="chip'+(meetFilter===k?' on':'')+'" onclick="meetFilter=\''+k+'\';renderMeet()">'+(k==='all'?'전체':k==='정모'?'📅 정모':'⚡ 번개')+'</button>').join('')+
+  '</div>'+
+  '<div class="chiprow">'+
+    ['all',...REGIONS].map(r=>'<button class="chip'+(meetRegion===r?' on':'')+'" onclick="meetRegion=\''+r+'\';renderMeet()">'+(r==='all'?'전지역':r)+'</button>').join('')+
+  '</div>'+
+  '<button class="btn btn-gold" onclick="meetForm()">＋ 모임 만들기</button>'+
+  '<div id="meetFormBox"></div></div>'+
+  '<div id="meetList">'+
+  (list.length?list.map(m=>{
+    const joined=(m.joiners||[]).includes(me);
+    const past=m.date<new Date().toISOString().slice(0,10);
+    return '<div class="post" style="border-left-color:'+(m.kind==='번개'?'var(--c-night)':'var(--gold)')+';'+(past?'opacity:.55':'')+'">'+
+    '<div class="post-top"><div class="post-title">'+(m.kind==='번개'?'⚡':'📅')+' '+esc(m.title)+(past?' <small style="color:var(--sub)">(종료)</small>':'')+'</div>'+
+    '<span class="tag" style="background:'+(m.kind==='번개'?'var(--c-night)':'var(--gold)')+'">'+m.kind+'</span></div>'+
+    '<div class="post-meta">📍 '+esc(m.region)+' · '+esc(m.place||'장소 미정')+' · 🗓 '+m.date+(m.time?' '+m.time:'')+' · 작성 '+esc(m.author)+lvlBadge(m.author,1)+'</div>'+
+    (m.desc?'<div class="post-body">'+esc(m.desc)+'</div>':'')+
+    '<div class="joiners">참여 '+(m.joiners||[]).length+'명'+((m.joiners||[]).length?' — '+(m.joiners||[]).map(esc).join(', '):'')+'</div>'+
+    '<div class="post-actions">'+
+      (!past?'<button class="btn btn-sm '+(joined?'btn-line':'btn-mint')+'" onclick="joinMeet('+m.ts+')">'+(joined?'참여 취소':'참여하기')+'</button>':'')+
+      (m.author===me?'<button class="btn btn-red btn-sm" onclick="delItem(\'tl_meet\','+m.ts+',renderMeet)">삭제</button>':'')+
+    '</div></div>';
+  }).join(''):'<div class="empty">해당 조건의 모임이 없습니다.<br>첫 모임을 만들어보세요!</div>')+
+  '</div>';
+}
+function meetForm(){
+  $('meetFormBox').innerHTML=
+  '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">'+
+  '<div class="row2"><div><label class="f">유형</label><select class="f" id="mKind"><option>정모</option><option>번개</option></select></div>'+
+  '<div><label class="f">지역</label><select class="f" id="mRegion">'+REGIONS.map(r=>'<option>'+r+'</option>').join('')+'</select></div></div>'+
+  '<label class="f">제목 *</label><input class="f" id="mTitle" placeholder="예: 통로 라운지 투어 같이 가실 분">'+
+  '<div class="row2"><div><label class="f">날짜 *</label><input class="f" type="date" id="mDate"></div>'+
+  '<div><label class="f">시간</label><input class="f" type="time" id="mTime"></div></div>'+
+  '<label class="f">장소</label><input class="f" id="mPlace" placeholder="예: BTS 통로역 3번 출구">'+
+  '<label class="f">설명</label><textarea class="f" id="mDesc" placeholder="모임 소개, 회비, 인원 제한 등"></textarea>'+
+  '<div style="display:flex;gap:8px;margin-top:13px"><button class="btn btn-gold" onclick="saveMeet()">등록</button>'+
+  '<button class="btn btn-line" onclick="$(\'meetFormBox\').innerHTML=\'\'">취소</button></div></div>';
+}
+async function saveMeet(){
+  if(!needNick()) return;
+  const title=$('mTitle').value.trim(), date=$('mDate').value;
+  if(!title||!date){ alert('제목과 날짜를 입력해주세요.'); return; }
+  try{
+    await TL.postAdd('meet',{kind:$('mKind').value,region:$('mRegion').value,title,date,
+      time:$('mTime').value,place:$('mPlace').value.trim(),body:$('mDesc').value.trim(),joiners:[]});
+    toast('등록되었습니다'); await renderMeet();
+  }catch(e){ alert(e.message); }
+}
+function joinMeet(ts){
+  const n=guard(null); if(!n) return;
+  const a=S('tl_meet',[]); const m=a.find(x=>x.ts===ts); if(!m) return;
+  m.joiners=m.joiners||[];
+  const i=m.joiners.indexOf(n);
+  if(i>=0){ m.joiners.splice(i,1); toast('참여를 취소했습니다'); }
+  else { m.joiners.push(n); toast('참여 완료! 🙌'); }
+  SS('tl_meet',a); renderMeet();
+}
+
+/* ============ 공통 삭제 ============ */
+function delItem(key,ts,rerender){
+  if(!confirm('삭제할까요?')) return;
+  SS(key,S(key,[]).filter(x=>x.ts!==ts)); toast('삭제되었습니다'); rerender();
+}
+
+/* 공용: 이미지 압축(최대 900px, JPEG) */
+function compressImage(file,cb){
+  const img=new Image(), rd=new FileReader();
+  rd.onload=e=>{
+    img.onload=()=>{
+      const max=900, sc=Math.min(1,max/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      cb(cv.toDataURL('image/jpeg',.78));
+    };
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+/* 공용: 이미지 크게 보기 */
+function linkify(escaped){
+  return escaped.replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener" style="color:var(--gold);word-break:break-all;font-weight:700">$1</a>');
+}
+function openImg(src,cap){
+  $('lbImg').src=src; $('lbCap').textContent=cap||'';
+  $('lightbox').classList.add('on');
+}
+
+/* ============ 태국뉴스 ============ */
+async function renderNews(){
+  _cache.tl_news=(await TL.posts('news')).map(mapPost);
+  const list=S('tl_news',[]).filter(p=>!isBlocked(p.author));
+  const me=getNick();
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📰 태국뉴스</h2><small>운영진이 전하는 현지 소식</small></div>'+
+  '<div style="background:var(--panel2);border-left:3px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--sub)">📢 태국뉴스는 <b style="color:var(--ink)">관리자만 등록</b>할 수 있습니다. 제보하실 소식이 있다면 🎧 고객센터로 보내주세요!</div></div>'+
+  (list.length?list.map(p=>
+    '<div class="post" style="border-left-color:var(--c-stay)">'+
+    '<div class="post-title">'+esc(p.title)+'</div>'+
+    '<div class="post-meta">'+(p.author==='관리자'?'<b style="color:#b06a14">👑 관리자</b><span class="badge-official">OFFICIAL</span>':esc(p.author)+lvlBadge(p.author,1))+' · '+timeago(p.ts)+'</div>'+
+    (p.img?'<img src="'+p.img+'" onclick="openImg(this.src,\''+esc(p.title).replace(/'/g,"\\'")+'\')" style="display:block;max-width:100%;max-height:280px;border-radius:11px;margin-top:10px;cursor:zoom-in;border:1px solid var(--line)">':'')+
+    (p.body?'<div class="post-body">'+linkify(esc(p.body))+'</div>':'')+
+    '<div class="post-actions">'+
+      (p.link?'<a class="btn btn-line btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(p.link)+'">원문 보기 →</a>':'')+
+      (p.author===me?'<button class="btn btn-red btn-sm" onclick="delItem(\'tl_news\','+p.ts+',renderNews)">삭제</button>':'')+
+    '</div></div>').join(''):'<div class="empty">등록된 소식이 없습니다.</div>');
+}
+/* ============ 맛집추천 ============ */
+let foodRegion='all';
+async function renderFood(){
+  _cache.tl_food=(await TL.posts('food')).map(mapPost);
+  const list=S('tl_food',[]).filter(p=>!isBlocked(p.author)&&(foodRegion==='all'||p.region===foodRegion));
+  const me=getNick();
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🍜 맛집 추천</h2><small>직접 가본 곳만 추천해주세요</small></div>'+
+  '<div class="chiprow">'+['all',...REGIONS].map(r=>'<button class="chip'+(foodRegion===r?' on':'')+'" onclick="foodRegion=\''+r+'\';renderFood()">'+(r==='all'?'전지역':r)+'</button>').join('')+'</div>'+
+  '<button class="btn btn-gold" onclick="foodForm()">＋ 맛집 추천하기</button>'+
+  '<a class="btn btn-line" style="text-decoration:none;margin-left:8px" href="./thailand-travel-map.html">🗺 지도에서 맛집 보기</a>'+
+  '<div id="foodFormBox"></div></div>'+
+  (list.length?list.map(p=>
+    '<div class="post" style="border-left-color:var(--c-food)">'+
+    '<div class="post-top"><div class="post-title">'+esc(p.title)+'</div><span class="tag" style="background:var(--c-food)">'+esc(p.region)+'</span></div>'+
+    '<div class="post-meta">'+esc(p.author)+lvlBadge(p.author,1)+' · '+timeago(p.ts)+(p.price?' · 💸 '+esc(p.price):'')+'</div>'+
+    (p.body?'<div class="post-body">'+esc(p.body)+'</div>':'')+
+    '<div class="post-actions">'+
+      (p.map?'<a class="btn btn-line btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(p.map)+'">구글맵 →</a>':'')+
+      (p.author===me?'<button class="btn btn-red btn-sm" onclick="delItem(\'tl_food\','+p.ts+',renderFood)">삭제</button>':'')+
+    '</div></div>').join(''):'<div class="empty">추천 맛집이 없습니다.<br>첫 추천을 남겨주세요!</div>');
+}
+function foodForm(){
+  $('foodFormBox').innerHTML=
+  '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">'+
+  '<div class="row2"><div><label class="f">지역</label><select class="f" id="fRegion">'+REGIONS.map(r=>'<option>'+r+'</option>').join('')+'</select></div>'+
+  '<div><label class="f">가격대</label><input class="f" id="fPrice" placeholder="예: 1인 300밧"></div></div>'+
+  '<label class="f">가게 이름 *</label><input class="f" id="fTitle" placeholder="예: 쏨분 시푸드 (본점)">'+
+  '<label class="f">추천 이유</label><textarea class="f" id="fBody" placeholder="추천 메뉴, 꿀팁, 웨이팅 정보 등"></textarea>'+
+  '<label class="f">구글맵 링크</label><input class="f" id="fMap" placeholder="https://maps.google.com/…">'+
+  '<div style="display:flex;gap:8px;margin-top:13px"><button class="btn btn-gold" onclick="saveFood()">등록</button>'+
+  '<button class="btn btn-line" onclick="$(\'foodFormBox\').innerHTML=\'\'">취소</button></div></div>';
+}
+async function saveFood(){
+  if(!needNick()) return;
+  const title=$('fTitle').value.trim();
+  if(!title){ alert('가게 이름을 입력해주세요.'); return; }
+  let map=$('fMap').value.trim(); if(map&&!/^https?:/.test(map)) map='https://'+map;
+  try{
+    await TL.postAdd('food',{title,region:$('fRegion').value,price:$('fPrice').value.trim(),
+      body:$('fBody').value.trim(),map});
+    toast('등록되었습니다'); await renderFood();
+  }catch(e){ alert(e.message); }
+}
+
+/* ============ 제휴업체 ============ */
+const PCATS=[['all','전체','📋'],['club','클럽','🎧'],['lounge','라운지','🍸'],['bnb','에어비앤비·숙소','🏠'],['rest','식당','🍽'],['bar','술집','🍺'],['night','나이트라이프','🌙'],['spa','마사지·스파','💆'],['etc','기타','✨']];
+let pFilter='all';
+function partnerSeed(){
+  if(S('tl_partner_seeded_v2',false)) return;
+  // 기존 예시 데이터 제거 후 실제 제휴업체 추가
+  const keep=S('tl_partner',[]).filter(p=>!String(p.name||'').startsWith('[예시]'));
+  const t=Date.now();
+  const add=[
+   {ts:t+4,cat:'bar',name:'이태원 (ITAEWON) 코리아타운점',region:'방콕',
+    desc:'수쿰빗 소이12 코리아타운(수쿰빗플라자) 2층 한인 바. 매일 저녁 7시~아침 7시, 분위기·안주 모두 호평 ★4.9',
+    benefit:'',link:'',img:'',author:'관리자'},
+   {ts:t+3,cat:'bar',name:'이태원 에까마이 (ITAEWON@EKKAMAI)',region:'방콕',
+    desc:'에까마이(수쿰빗 소이63)의 한인 바 & 코리안 다이닝. 저녁 8시 오픈~아침까지, 양념치킨 맛집 ★4.8',
+    benefit:'',link:'',img:'',author:'관리자'},
+   {ts:t+2,cat:'bar',name:'PUB33 — RCA 브라보BKK 6층',region:'방콕',
+    desc:'RCA 브라보BKK 6층의 펍 & 와인바. 저녁 8시~새벽 4시 영업.',
+    benefit:'',link:'',img:'',author:'관리자'},
+   {ts:t+1,cat:'club',name:'브릿지 RCA (Bridge RCA)',region:'방콕',
+    desc:'RCA에 새롭게 선보일 신규 베뉴. 현재 오픈 준비 중 — 오픈 소식은 공지로 가장 먼저 알려드릴게요!',
+    benefit:'',link:'',img:'',soon:true,author:'관리자'}
+  ];
+  SS('tl_partner',add.concat(keep));
+  SS('tl_partner_seeded_v2',true);
+  SS('tl_partner_seeded',true);
+}
+async function renderPartner(){
+  _cache.tl_partner=(await TL.posts('partner')).map(mapPost);
+  partnerSeed();
+  const list=S('tl_partner',[]).filter(p=>!isBlocked(p.author)&&(pFilter==='all'||p.cat===pFilter));
+  const me=getNick();
+  const catLb=c=>{const f=PCATS.find(x=>x[0]===c);return f?f[2]+' '+f[1]:c;};
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>⭐ 제휴업체 ⭐</h2><small>회원 혜택이 있는 검증 업체</small></div>'+
+  '<div class="chiprow">'+PCATS.map(c=>'<button class="chip'+(pFilter===c[0]?' on':'')+'" onclick="pFilter=\''+c[0]+'\';renderPartner()">'+c[2]+' '+c[1]+'</button>').join('')+'</div>'+
+  '<button class="btn btn-gold" onclick="partnerForm()">＋ 제휴업체 등록</button><div id="pFormBox"></div></div>'+
+  '<div class="pgrid">'+
+  (list.length?list.map(p=>
+    '<div class="pcard">'+
+    '<div class="pimg" style="position:relative">'+(p.img?'<img src="'+p.img+'">':(PCATS.find(x=>x[0]===p.cat)||['','','🏪'])[2])+
+    (p.soon?'<span style="position:absolute;top:8px;left:8px;background:var(--gold);color:#3a2408;font-size:10.5px;font-weight:900;padding:4px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.2)">🔜 곧 오픈 예정</span>':'')+'</div>'+
+    '<div class="pbody"><b>'+esc(p.name)+'</b>'+
+    '<div class="desc">'+catLb(p.cat)+' · '+esc(p.region)+(p.benefit?'<br>🎁 <b style="color:var(--gold)">'+esc(p.benefit)+'</b>':'')+
+    (p.desc?'<br>'+esc(p.desc):'')+'</div>'+
+    (p.soon?'<div class="pbtn" style="background:var(--panel2);color:var(--sub);cursor:default">🔜 오픈 준비 중 · 커밍순</div>'
+      :(p.link?'<a class="pbtn" data-pn="'+esc(p.name)+'" onclick="logBook(this.dataset.pn)" target="_blank" rel="noopener" href="'+esc(p.link)+'">예약 · 문의하기</a>':''))+
+    (p.author===me?'<button class="btn btn-red btn-sm" style="margin-top:8px;width:100%" onclick="delItem(\'tl_partner\','+p.ts+',renderPartner)">삭제</button>':'')+
+    '</div></div>').join(''):'<div class="empty" style="grid-column:1/-1">해당 카테고리 제휴업체가 없습니다.</div>')+
+  '</div>';
+}
+function partnerForm(){
+  $('pFormBox').innerHTML=
+  '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)">'+
+  '<div class="row2"><div><label class="f">카테고리</label><select class="f" id="pCat">'+PCATS.filter(c=>c[0]!=='all').map(c=>'<option value="'+c[0]+'">'+c[2]+' '+c[1]+'</option>').join('')+'</select></div>'+
+  '<div><label class="f">지역</label><select class="f" id="pRegion">'+REGIONS.map(r=>'<option>'+r+'</option>').join('')+'</select></div></div>'+
+  '<label class="f">업체명 *</label><input class="f" id="pName">'+
+  '<label class="f">회원 혜택</label><input class="f" id="pBenefit" placeholder="예: 입장료 20% 할인">'+
+  '<label class="f">소개</label><textarea class="f" id="pDesc"></textarea>'+
+  '<label class="f">예약·문의 링크 (LINE/카톡/전화/URL)</label><input class="f" id="pLink" placeholder="https://line.me/… 또는 tel:+66…">'+
+  '<label class="f">대표 이미지 (선택, 500KB 이하)</label><input class="f" type="file" accept="image/*" id="pImgFile" style="padding:8px">'+
+  '<label class="f" style="margin-top:14px"><input type="checkbox" id="pSoon" style="width:auto;margin-right:6px;vertical-align:-2px">🔜 곧 오픈 예정으로 표시 (예약 버튼 대신 커밍순 안내)</label>'+
+  '<div style="display:flex;gap:8px;margin-top:13px"><button class="btn btn-gold" onclick="savePartner()">등록</button>'+
+  '<button class="btn btn-line" onclick="$(\'pFormBox\').innerHTML=\'\'">취소</button></div></div>';
+}
+async function savePartner(){
+  if(!needNick()) return;
+  const name=$('pName').value.trim();
+  if(!name){ alert('업체명을 입력해주세요.'); return; }
+  let link=$('pLink').value.trim();
+  if(link&&!/^(https?:|tel:)/.test(link)) link='https://'+link;
+  const f=$('pImgFile').files[0];
+  try{
+    let img='';
+    if(f) img=await TL.uploadImage(f,'partner');
+    await TL.postAdd('partner',{title:name,cat:$('pCat').value,region:$('pRegion').value,
+      benefit:$('pBenefit').value.trim(),body:$('pDesc').value.trim(),link,img,
+      soon:$('pSoon').checked});
+    toast('등록되었습니다'); await renderPartner();
+  }catch(e){ alert(e.message); }
+}
+
+/* ============ 갤러리 ============ */
+const GCATS=[['all','전체','📋'],['night','나이트라이프','🌙'],['sight','관광지','🛕'],['spot','명소','📸'],['food','맛집','🍜'],['coffee','커피','☕'],['spa','마사지·스파','💆'],['etc','기타','✨']];
+let gFilter='all';
+function gcatLb(k){ const f=GCATS.find(x=>x[0]===k); return f?f[2]+' '+f[1]:'✨ 기타'; }
+async function renderGallery(){
+  _cache.tl_gallery=(await TL.posts('gallery')).map(mapPost);
+  const all=S('tl_gallery',[]).filter(p=>!isBlocked(p.author));
+  const list=all.filter(g=>gFilter==='all'||(g.cat||'etc')===gFilter);
+  const me=getNick();
+  const cnt=k=>k==='all'?all.length:all.filter(g=>(g.cat||'etc')===k).length;
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📷 갤러리</h2><small>태국의 순간을 카테고리별로 공유하세요</small></div>'+
+  '<div class="chiprow">'+GCATS.map(cg=>
+    '<button class="chip'+(gFilter===cg[0]?' on':'')+'" onclick="gFilter=\''+cg[0]+'\';renderGallery()">'+cg[2]+' '+cg[1]+'<span style="opacity:.6;font-size:10.5px;margin-left:3px">'+cnt(cg[0])+'</span></button>').join('')+'</div>'+
+  '<div class="row2"><div><label class="f">카테고리</label><select class="f" id="gCat" style="margin-top:0">'+
+    GCATS.filter(x=>x[0]!=='all').map(x=>'<option value="'+x[0]+'">'+x[2]+' '+x[1]+'</option>').join('')+'</select></div>'+
+  '<div><label class="f">사진 업로드 (자동 압축)</label><input class="f" type="file" accept="image/*" id="gFile" style="padding:8px;margin-top:0"></div></div>'+
+  '<label class="f">사진 설명</label><input class="f" id="gCap" placeholder="예: 왓아룬 야경 🌙" maxlength="60">'+
+  '<div style="margin-top:12px"><button class="btn btn-gold" onclick="saveGallery()">올리기</button></div></div>'+
+  '<div class="ggrid">'+
+  (list.length?list.map(g=>
+    '<div class="gitem" onclick="openLb('+g.ts+')"><img src="'+g.img+'">'+
+    '<span style="position:absolute;top:7px;left:7px;background:rgba(20,30,25,.72);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px">'+gcatLb(g.cat||'etc')+'</span>'+
+    '<div class="gcap">'+esc(g.cap||'')+(g.author===me?' <span onclick="event.stopPropagation();delItem(\'tl_gallery\','+g.ts+',renderGallery)" style="color:var(--red);cursor:pointer">✕</span>':'')+'</div></div>'
+  ).join(''):'<div class="empty" style="grid-column:1/-1">'+(gFilter==='all'?'아직 사진이 없습니다.<br>첫 사진을 올려주세요! 📸':'이 카테고리에 사진이 없습니다.')+'</div>')+
+  '</div>';
+}
+async function saveGallery(){
+  if(!needNick()) return;
+  const f=$('gFile').files[0];
+  if(!f){ alert('사진을 선택해주세요.'); return; }
+  toast('업로드 중…');
+  try{
+    const url=await TL.uploadImage(f,'gallery');
+    await TL.postAdd('gallery',{img:url,title:$('gCap').value.trim(),cat:$('gCat').value});
+    toast('사진이 등록되었습니다 📷'); await renderGallery();
+  }catch(e){ alert(e.message); }
+}
+/* ============ 고객센터 / 예약상담 ============ */
+function supportCard(icon,title,desc,link,img){
+  return '<div class="box" style="max-width:520px;margin:0 auto"><div style="text-align:center;padding:8px 4px 4px">'+
+  '<div style="font-size:38px">'+icon+'</div>'+
+  '<div style="font-size:17px;font-weight:900;margin-top:8px">'+title+'</div>'+
+  '<div style="color:var(--sub);font-size:13px;line-height:1.7;margin-top:7px">'+desc+'</div>'+
+  (img
+    ?'<a '+(link?'href="'+esc(link)+'" target="_blank" rel="noopener"':'href="javascript:void(0)"')+' style="display:inline-block;margin-top:16px">'+
+     '<img src="'+img+'" alt="QR" style="width:190px;height:190px;object-fit:contain;background:#fff;border-radius:16px;padding:12px;border:2px solid var(--gold);cursor:pointer;transition:.15s;box-shadow:0 4px 16px rgba(0,0,0,.08)" '+
+     'onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'\'">'+
+     '</a><div style="color:var(--sub);font-size:11.5px;margin-top:8px">QR을 스캔하거나 이미지를 누르면 바로 연결됩니다</div>'
+    :'')+
+  (link?'<a class="btn btn-gold" style="display:block;margin-top:14px;text-decoration:none;padding:14px;font-size:14px" target="_blank" rel="noopener" href="'+esc(link)+'">바로 연결하기 →</a>':'')+
+  ((!img&&!link)?'<div class="empty" style="padding:22px 8px">아직 연결 정보가 등록되지 않았습니다.<br>관리자 페이지 → 커뮤니티 관리 → 고객센터 설정에서 등록하세요.</div>':'')+
+  '</div></div>';
+}
+function supportHours(sp){
+  return sp.hours?'<div class="box" style="margin:14px auto 0;max-width:520px;text-align:center;color:var(--sub);font-size:12.5px">⏰ 상담 가능 시간: '+esc(sp.hours)+'</div>':'';
+}
+function renderSupportCS(){
+  const sp=S('tl_support',{});
+  $('main').innerHTML=
+  '<div class="hero" style="padding:20px 22px;margin-bottom:14px"><div class="eyebrow">CUSTOMER SERVICE</div>'+
+  '<h1 style="font-size:clamp(20px,4.5vw,27px)">🎧 고객센터 문의</h1>'+
+  '<p>계정 문제, 신고, 건의사항, 제휴 문의 등 이용 중 궁금한 점을 도와드립니다.</p></div>'+
+  supportCard('🎧','고객센터 문의','계정 문제 · 신고 · 건의사항 · 제휴 문의<br>무엇이든 편하게 물어보세요.',sp.csLink,sp.csImg)+
+  supportHours(sp)+
+  '<div style="text-align:center;margin-top:14px"><button class="btn btn-line" onclick="go(\'supportBK\')">📅 예약 상담이 필요하신가요? →</button></div>';
+}
+function renderSupportBK(){
+  const sp=S('tl_support',{});
+  $('main').innerHTML=
+  '<div class="hero" style="padding:20px 22px;margin-bottom:14px"><div class="eyebrow">RESERVATION</div>'+
+  '<h1 style="font-size:clamp(20px,4.5vw,27px)">📅 예약 상담문의</h1>'+
+  '<p>클럽·라운지 테이블, 마사지·스파, 숙소까지 — 1:1 맞춤 예약 상담을 도와드립니다.</p></div>'+
+  supportCard('📅','예약 상담문의','클럽 · 라운지 테이블 / 마사지 · 스파 / 숙소<br>원하는 일정과 인원을 알려주시면 빠르게 안내해드립니다.',sp.bkLink,sp.bkImg)+
+  supportHours(sp)+
+  '<div style="text-align:center;margin-top:14px"><button class="btn btn-line" onclick="go(\'supportCS\')">🎧 일반 문의는 고객센터로 →</button></div>';
+}
+
+function openLb(ts){
+  const g=S('tl_gallery',[]).find(x=>x.ts===ts); if(!g) return;
+  $('lbImg').src=g.img; $('lbCap').textContent=gcatLb(g.cat||'etc')+' · '+(g.cap||'')+' — '+g.author;
+  $('lightbox').classList.add('on');
+}
+
+/* ============ 시작 ============ */
+
+/* ===== 시작 ===== */
+(async function(){
+  try{
+    await TL.init();
+    await refreshAll();
+    await go('home');
+    await loadChat(true);
+    TL.onChat(()=>loadChat(false));
+    TL.onNotif(()=>updateBadge());
+    window.addEventListener('tl:auth',async()=>{ await refreshAll(); await go(cur); });
+    setInterval(updateBadge,30000);
+  }catch(e){
+    console.error(e);
+    const m=document.getElementById('main');
+    if(m) m.innerHTML='<div class="box" style="text-align:center;padding:40px">'+
+      '<b style="font-size:16px">서버 연결에 실패했습니다</b>'+
+      '<p style="color:var(--sub);font-size:13px;margin-top:10px;line-height:1.7">'+
+      'config.js의 Supabase 주소와 anon 키를 확인해주세요.<br>'+
+      '<span style="font-size:11.5px">'+String(e.message||e)+'</span></p></div>';
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="방콕·파타야·치앙마이 등 태국 8개 도시의 맛집·클럽·마사지·관광지·호텔 156곳을 지역별로 찾아보세요.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="타이라이프 · 태국 여행 지도">
+<meta property="og:description" content="방콕·파타야·치앙마이 등 8개 도시 156곳. 통로·카오산·님만해민까지 동네별로 골라보세요.">
+<meta property="og:site_name" content="타이라이프">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#e9efe8">
+<title>타이맵 · 태국 지역별 맛집 지도</title>
+<!-- 타이라이프 지도 · 공개 배포판 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#e9efe8; --panel:#f7faf5; --panel2:#e2eae1; --line:#c6d6c9;
+  --ink:#243c40; --sub:#63796f; --gold:#f08a3e;
+  --c-food:#ef7433; --c-night:#d94f97; --c-spa:#1aa578; --c-sight:#e0a032; --c-stay:#4485e6;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif}
+body{padding-bottom:40px}
+
+header{padding:22px 18px 10px;max-width:1200px;margin:0 auto}
+.eyebrow{color:var(--gold);font-size:12px;letter-spacing:.28em;font-weight:700}
+h1{font-size:clamp(26px,6vw,40px);font-weight:900;line-height:1.15;margin-top:6px}
+h1 em{font-style:normal;color:var(--gold)}
+.tagline{color:var(--sub);font-size:13px;margin-top:8px;line-height:1.6}
+
+.controls{position:sticky;top:0;z-index:1001;background:linear-gradient(var(--bg) 82%,rgba(23,17,38,0));padding:10px 0 12px}
+.chiprow{display:flex;gap:8px;overflow-x:auto;padding:4px 18px;scrollbar-width:none;max-width:1200px;margin:0 auto}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--sub);
+  border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:700;cursor:pointer;transition:.15s}
+.chip.on{background:var(--gold);border-color:var(--gold);color:#3a2408}
+.chip .cnt{font-weight:400;opacity:.7;font-size:11.5px;margin-left:3px}
+.catchip{display:flex;align-items:center;gap:6px}
+.catchip .dot{width:8px;height:8px;border-radius:50%}
+.catchip.on{color:#f7faf5}
+.catchip[data-cat=food].on{background:var(--c-food);border-color:var(--c-food)}
+.catchip[data-cat=night].on{background:var(--c-night);border-color:var(--c-night)}
+.catchip[data-cat=spa].on{background:var(--c-spa);border-color:var(--c-spa)}
+.catchip[data-cat=sight].on{background:var(--c-sight);border-color:var(--c-sight)}
+.catchip[data-cat=stay].on{background:var(--c-stay);border-color:var(--c-stay)}
+.catchip[data-cat=all].on{background:var(--ink);border-color:var(--ink)}
+
+/* 지역 헤더 + 하부 카테고리 카드 */
+.regionhead{display:flex;align-items:baseline;gap:9px;padding:2px 0 12px;flex-wrap:wrap}
+.regionhead h2{font-size:clamp(19px,4.4vw,25px);font-weight:900}
+.regionhead .sub{color:var(--sub);font-size:12.5px}
+
+.catgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:9px;margin-bottom:16px}
+.catcard{background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(36,60,64,.05);border-radius:13px;padding:13px 10px;
+  text-align:center;cursor:pointer;transition:.16s;border-top:3px solid var(--line)}
+.catcard:hover{transform:translateY(-2px);background:var(--panel2)}
+.catcard .ic{font-size:21px;display:block;margin-bottom:5px}
+.catcard .lb{font-size:12.5px;font-weight:800;line-height:1.3}
+.catcard .n{display:block;color:var(--sub);font-size:11px;font-weight:400;margin-top:3px}
+.catcard[data-cat=all]{border-top-color:var(--ink)}
+.catcard[data-cat=food]{border-top-color:var(--c-food)}
+.catcard[data-cat=night]{border-top-color:var(--c-night)}
+.catcard[data-cat=spa]{border-top-color:var(--c-spa)}
+.catcard[data-cat=sight]{border-top-color:var(--c-sight)}
+.catcard[data-cat=stay]{border-top-color:var(--c-stay)}
+.catcard.on{background:var(--panel2);box-shadow:inset 0 0 0 1.5px currentColor}
+.catcard[data-cat=all].on{color:var(--ink)}
+.catcard[data-cat=food].on{color:var(--c-food)}
+.catcard[data-cat=night].on{color:var(--c-night)}
+.catcard[data-cat=spa].on{color:var(--c-spa)}
+.catcard[data-cat=sight].on{color:var(--c-sight)}
+.catcard[data-cat=stay].on{color:var(--c-stay)}
+.catcard.on .lb{color:inherit}
+
+.layout{max-width:1200px;margin:0 auto;padding:0 18px;display:grid;gap:16px}
+#map{width:100%;height:46vh;min-height:320px;border-radius:16px;border:1px solid var(--line);z-index:1}
+.leaflet-container{background:#dfe7e0;font:inherit}
+.leaflet-popup-content-wrapper{background:var(--panel);color:var(--ink);border-radius:12px;border:1px solid var(--line)}
+.leaflet-popup-tip{background:var(--panel)}
+.leaflet-popup-content{margin:12px 14px;font-size:13px;line-height:1.5}
+.pp-name{font-weight:800;font-size:14px;margin-bottom:2px}
+.pp-meta{color:#4a625c;font-size:12px}
+.pp-link{display:inline-block;margin-top:7px;color:var(--gold);font-weight:700;text-decoration:none;font-size:12.5px}
+
+.mk{width:26px;height:26px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);
+  border:2px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(36,60,64,.28);font-size:12px}
+
+.listhead{display:flex;justify-content:space-between;align-items:baseline}
+.listhead h2{font-size:18px;font-weight:900}
+.listhead small{color:var(--sub)}
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);box-shadow:0 2px 8px rgba(36,60,64,.05);border-radius:14px;padding:14px 15px;cursor:pointer;transition:.15s;border-left:4px solid var(--line)}
+.card:hover{transform:translateY(-2px);border-color:#a9c2ad}
+.card.food{border-left-color:var(--c-food)}
+.card.night{border-left-color:var(--c-night)}
+.card.spa{border-left-color:var(--c-spa)}
+.card.sight{border-left-color:var(--c-sight)}
+.card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.card-name{font-weight:800;font-size:15.5px;line-height:1.35}
+.badge{flex:0 0 auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;color:#fff}
+.badge.food{background:var(--c-food)}.badge.night{background:var(--c-night)}
+.badge.spa{background:var(--c-spa)}.badge.sight{background:var(--c-sight)}
+.stars{color:var(--gold);font-weight:800;font-size:13px;margin-top:5px}
+.stars small{color:var(--sub);font-weight:400}
+.tip{color:#37524f;font-size:13px;line-height:1.65;margin-top:7px}
+.addr{color:#5b7168;font-size:11.5px;margin-top:7px;line-height:1.5;font-weight:600}
+.gmap{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:800;color:var(--gold);text-decoration:none}
+.gmap:hover{text-decoration:underline}
+
+/* 예약 */
+.bkrow{display:flex;align-items:center;gap:10px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.bkqr{width:62px;height:62px;object-fit:cover;border-radius:9px;border:2px solid var(--c-spa);cursor:pointer;background:#fff;flex:0 0 auto;transition:.15s}
+.bkqr:hover{transform:scale(1.06)}
+.bkbtn{flex:1;text-align:center;background:var(--c-spa);color:#0d2b23;font-weight:900;font-size:13.5px;
+  padding:11px 14px;border-radius:10px;text-decoration:none;transition:.15s}
+.bkbtn:hover{opacity:.87}
+
+#qrModal{position:fixed;inset:0;background:rgba(36,60,64,.72);z-index:2000;display:none;align-items:center;justify-content:center;padding:24px}
+#qrModal.on{display:flex}
+.qrbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;max-width:340px;width:100%;text-align:center}
+.qrbox h3{font-size:16px;font-weight:900;margin-bottom:4px}
+.qrbox p{color:var(--sub);font-size:12px;margin-bottom:14px}
+.qrbox img{width:100%;max-width:230px;border-radius:12px;background:#fff;padding:10px}
+.qrbox .go{display:block;margin-top:16px;background:var(--c-spa);color:#0d2b23;font-weight:900;font-size:14px;
+  padding:13px;border-radius:11px;text-decoration:none}
+.qrbox .cl{margin-top:10px;background:none;border:1px solid var(--line);color:var(--sub);border-radius:10px;
+  padding:9px 16px;font-size:12.5px;cursor:pointer;font-family:inherit;font-weight:700}
+
+footer{max-width:1200px;margin:26px auto 0;padding:0 18px;color:var(--sub);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+
+@media(min-width:900px){
+  .layout{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}
+  #map{height:calc(100vh - 150px);position:sticky;top:118px}
+  .cards{grid-template-columns:1fr}
+  .listwrap{max-height:calc(100vh - 150px);overflow-y:auto;padding-right:6px}
+}
+body{background:
+  radial-gradient(1100px 480px at 85% -8%, rgba(240,138,62,.09), transparent 60%),
+  radial-gradient(900px 520px at -12% 28%, rgba(217,79,151,.055), transparent 60%),
+  radial-gradient(760px 420px at 55% 108%, rgba(68,133,230,.05), transparent 60%),
+  var(--bg)}
+
+/* iframe 임베드 모드 (커뮤니티 안에서 열릴 때) */
+body.embed header{padding:12px 14px 6px}
+body.embed header h1{font-size:19px}
+body.embed header .sub{display:none}
+body.embed .controls{padding:0 14px}
+body.embed .layout{padding:0 14px;gap:12px}
+body.embed #map{height:38vh;min-height:250px}
+body.embed footer{display:none}
+body.embed .regionhead{padding:0 0 8px}
+body.embed .regionhead h2{font-size:17px}
+@media(min-width:900px){
+  body.embed #map{height:calc(100vh - 116px);top:96px}
+}
+
+/* 구역(지역) 필터 */
+.zonerow{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}
+.zchip{border:1px solid var(--line);background:var(--panel);color:var(--sub);border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.zchip:hover{border-color:var(--gold)}
+.zchip.on{background:var(--gold);border-color:var(--gold);color:#3a2408}
+.zchip .zn{opacity:.65;font-size:10.5px;margin-left:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">THAI MAP · 태국 로컬 지도</div>
+  <h1>태국 <em>맛집 · 나이트라이프 · 스파</em><br>지역별 여행 지도</h1>
+  <p class="tagline">방콕부터 이싼까지 — 구글 지도 실제 평점 기반으로 추린 지역별 추천 스팟. 지역과 카테고리를 골라 지도에서 바로 확인하세요.</p>
+</header>
+
+<div class="controls">
+  <div class="chiprow" id="regionRow"></div>
+</div>
+
+<div class="layout">
+  <div id="map"></div>
+  <div class="listwrap">
+    <div class="regionhead">
+      <h2 id="regionTitle"></h2>
+      <span class="sub" id="regionSub"></span>
+    </div>
+    <div class="catgrid" id="catGrid"></div>
+    <div class="zonerow" id="zoneRow"></div>
+    <div class="listhead"><h2 id="listTitle" style="font-size:15px"></h2><small id="listCount"></small></div>
+    <div class="cards" id="cards" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="qrModal" onclick="if(event.target===this)closeQR()">
+  <div class="qrbox">
+    <h3 id="qrTitle"></h3>
+    <p>QR을 스캔하거나 아래 버튼을 눌러 연결하세요</p>
+    <img id="qrImg" src="" alt="QR">
+    <a id="qrGo" class="go" target="_blank" rel="noopener" href="#"></a>
+    <button class="cl" onclick="closeQR()">닫기</button>
+  </div>
+</div>
+
+<div style="max-width:1200px;margin:0 auto;padding:0 18px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span id="syncInfo" style="font-size:11.5px;color:var(--sub)"></span>
+  <button onclick="location.reload()" style="margin-left:auto;background:transparent;border:1px solid var(--line);
+    color:var(--sub);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit">
+    🔄 최신 데이터 불러오기</button>
+</div>
+
+<footer>
+  <div style="background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:10px;padding:12px 14px;margin-bottom:12px;color:#3d5450;line-height:1.7">
+    <b style="color:var(--gold)">영업 정보 확인 안내</b><br>
+    전체 장소는 <b>2026년 7월 18일</b> 구글 지도 기준으로 영업 여부를 확인했습니다. 다만 태국 나이트라이프 업소는 폐업·이전·임시휴업이 잦으므로,
+    <b>방문 전 반드시 "구글맵에서 열기"를 눌러 최신 영업시간과 영구 폐업(Permanently closed) 표시를 확인</b>하세요.
+    특히 클럽·바는 요일별 휴무가 많고 시즌에 따라 운영이 중단되기도 합니다.
+  </div>
+  ※ 평점·영업 정보는 구글 지도 기준이며 현지 사정에 따라 변동될 수 있습니다. 야간 업소 이용 시 가격과 미니멈 스펜딩을 사전에 확인하고, 소지품·결제 안전에 유의하세요.
+  <div style="margin-top:10px">
+    
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="./tl-api.js"></script>
+<script>
+const CATS=[
+ {k:'all',  ic:'📍', lb:'전체'},
+ {k:'food', ic:'🍜', lb:'맛집'},
+ {k:'night',ic:'🍸', lb:'유흥·나이트'},
+ {k:'spa',  ic:'💆', lb:'마사지·스파'},
+ {k:'sight',ic:'🛕', lb:'관광지'},
+ {k:'stay', ic:'🏨', lb:'숙소·호텔'}
+];
+const ZONE_GEO={
+ bkk:[['sukhumvit','수쿰빗·프롬퐁',13.7300,100.5690,2.2],
+      ['thonglor','통로·에까마이',13.7290,100.5830,2.0],
+      ['siam','시암·프라투남',13.7460,100.5350,2.0],
+      ['silom','실롬·사톤',13.7250,100.5300,2.2],
+      ['rca','RCA·라마9',13.7530,100.5740,3.0],
+      ['oldtown','카오산·구시가',13.7590,100.4990,3.5],
+      ['riverside','리버사이드·차이나타운',13.7400,100.5100,2.5],
+      ['nana','나나·아속',13.7440,100.5560,1.5]],
+ pty:[['walking','워킹스트리트·남파타야',12.9250,100.8720,2.0],
+      ['central','센트럴 파타야',12.9350,100.8850,1.8],
+      ['naklua','나끌루아·북파타야',12.9650,100.8880,3.0],
+      ['jomtien','조미티엔·프라땀낙',12.9050,100.8700,3.5]],
+ cnx:[['nimman','님만해민',18.7960,98.9680,1.5],
+      ['oldcity','올드시티(성벽 안)',18.7880,98.9860,1.5],
+      ['riverside','삥강변·나이트바자',18.7870,99.0000,1.5],
+      ['suthep','도이수텝 방면',18.7900,98.9400,6.0]]
+};
+function zoneOf(rid,lat,lng){
+  const zs=ZONE_GEO[rid]; if(!zs) return 'etc';
+  const R=6371, t=Math.PI/180;
+  let best='etc', bd=1e9;
+  for(const [k,,zla,zlo,zr] of zs){
+    const dLa=(zla-lat)*t, dLo=(zlo-lng)*t;
+    const x=Math.sin(dLa/2)**2+Math.cos(lat*t)*Math.cos(zla*t)*Math.sin(dLo/2)**2;
+    const d=2*R*Math.asin(Math.sqrt(x));
+    if(d<=zr && d<bd){ bd=d; best=k; }
+  }
+  return best;
+}
+
+const ZONES={
+ bkk:[['sukhumvit','수쿰빗·프롬퐁'],['thonglor','통로·에까마이'],['siam','시암·프라투남'],['silom','실롬·사톤'],['rca','RCA·라마9'],['oldtown','카오산·구시가'],['riverside','리버사이드·차이나타운'],['nana','나나·아속']],
+ pty:[['walking','워킹스트리트·남파타야'],['central','센트럴 파타야'],['naklua','나끌루아·북파타야'],['jomtien','조미티엔·프라땀낙']],
+ cnx:[['nimman','님만해민'],['oldcity','올드시티(성벽 안)'],['riverside','삥강변·나이트바자'],['suthep','도이수텝 방면']]
+};
+const CAT_LABEL={food:'맛집',night:'나이트',spa:'스파',sight:'관광',stay:'숙소'};
+const CAT_FULL={all:'전체',food:'맛집',night:'유흥·나이트',spa:'마사지·스파',sight:'관광지',stay:'숙소·호텔'};
+const CAT_ICON={food:'🍜',night:'🍸',spa:'💆',sight:'🛕',stay:'🏨'};
+const CAT_COLOR={food:'#ef7433',night:'#d94f97',spa:'#1aa578',sight:'#e0a032',stay:'#4485e6'};
+
+const DATA=[
+{id:'bkk',name:'방콕',center:[13.744,100.52],zoom:12,places:[
+ {n:'롱로스 (RONGROS)',c:'food',lat:13.74425,lng:100.49171,r:4.7,rc:4683,tip:'왓아룬이 정면으로 보이는 강변 루프탑 타이 레스토랑. 미쉐린 가이드 등재, 일몰 시간대 예약 추천.',a:'Maha Rat Rd, 프라나콘',pid:'ChIJjYPUa8GZ4jARi9fgigQOiR8',z:'oldtown'},
+ {n:'디 아일랜드 방콕',c:'food',lat:13.76356,lng:100.50034,r:4.9,rc:14459,tip:'카오산 인근 리뷰 1.4만 개의 인기 레스토랑 겸 카페. 아침부터 새벽 2시까지, 가성비 좋은 타이 요리와 스무디.',a:'Soi Samsen 4, 프라나콘',pid:'ChIJBYCkBQCZ4jARMk27YRVj-vM',z:'oldtown'},
+ {n:'카쫀 (Kajohn) 남부요리',c:'food',lat:13.75598,lng:100.50968,r:4.9,rc:1461,tip:'태국 남부 정통요리 전문점. 게살 요리와 돼지갈비 스튜가 대표 메뉴, 화요일 휴무.',a:'Chakkraphatdi Phong Rd',pid:'ChIJY3fswo-Z4jARm0mwI29TW1M',z:'oldtown'},
+ {n:'더 식스 (THE SIXTH)',c:'food',lat:13.74570,lng:100.49132,r:4.7,rc:1509,tip:'왓포 바로 옆 가성비 로컬 식당. 팟타이·쏨땀이 유명하고 오후 4시 45분까지만 영업.',a:'Maha Rat Rd, 왓포 인근',pid:'ChIJfX5VxgWZ4jARunaN7-8daME',z:'oldtown'},
+ {n:'옥타브 루프탑 바',c:'night',lat:13.72350,lng:100.58054,r:4.4,rc:6119,tip:'메리어트 통로 45~49층, 방콕 360도 뷰 대표 루프탑. 드레스코드 있고 예약 권장.',a:'Sukhumvit 57, 통로',pid:'ChIJhxshNqWf4jARgYxEW8hBGcE',z:'thonglor'},
+ {n:'사나이 루프탑 바 (카오산)',c:'night',lat:13.76068,lng:100.49782,r:4.8,rc:651,tip:'카오산로드 번잡함을 피해 즐기는 루프탑. 선셋 칵테일과 안주가 좋다는 평.',a:'Tani Rd, 카오산',pid:'ChIJlfTGdoSZ4jAR3QxxLj97yVM',z:'oldtown'},
+ {n:'스타라이트 루프탑 바',c:'night',lat:13.72772,lng:100.52365,r:4.7,rc:489,tip:'실롬 지역 로맨틱한 분위기의 루프탑. 해피아워(17~19시) 활용하면 합리적.',a:'Surawong Rd, 실롬',pid:'ChIJL9CeFuGZ4jARQuX3E4CjsHE',z:'silom'},
+ {n:'뷰 루프탑 방콕',c:'night',lat:13.74958,lng:100.54066,r:4.8,rc:1966,tip:'프라투남 노보텔 9층 풀사이드 루프탑. 시내 중심이라 접근성 좋고 분위기 대비 가격 무난.',a:'Phetchaburi Rd, 프라투남',pid:'ChIJR4LgSl-f4jARSMzR8x4RA3E',z:'siam'},
+ {n:'오닉스 (ONYX) — RCA',c:'night',lat:13.75197,lng:100.57500,r:4.1,rc:2222,tip:'방콕 대표 EDM 메가클럽. RCA 클럽거리의 간판, VIP 테이블 문화 강함. 신분증(실물) 필수, 새벽 4시까지.',a:'Soi RCA, 후아이쾅',pid:'ChIJwTYzfF-e4jARtBgAisGo--A',z:'rca'},
+ {n:'루트66 (Route66) — RCA',c:'night',lat:13.75148,lng:100.57533,r:4.0,rc:2675,tip:'RCA의 터줏대감 대형 클럽. 힙합·EDM·라이브밴드 3개 존 구성, 로컬 젊은층 비율 높음. 입장료 300밧(음료 1잔 포함).',a:'Soi RCA, 라마9',pid:'ChIJszB0Zl-e4jARaFQI0eAScJQ',z:'rca'},
+ {n:'레벨스 (Levels) — 수쿰빗',c:'night',lat:13.74413,lng:100.55661,r:4.2,rc:2362,tip:'알로프트 호텔 6층, 수쿰빗 소이11 대표 클럽. 일렉트로닉 중심, 드레스코드 있음(샌들 불가). 입장 남 400/여 300밧.',a:'Sukhumvit Soi 11',pid:'ChIJl7VMGOae4jART2WWLs0Pv0Q',z:'nana'},
+ {n:'슈가 클럽 (Sugar Club)',c:'night',lat:13.74301,lng:100.55652,r:4.0,rc:1874,tip:'수쿰빗 소이11 힙합 전문 클럽. 올드스쿨~트랩까지, 인터내셔널한 분위기. 심야에 가장 붐빔.',a:'Sukhumvit Soi 11',pid:'ChIJ22SE0auf4jARPuAb0KoHRoI',z:'nana'},
+ {n:'더 클럽 카오산 (The Club)',c:'night',lat:13.75924,lng:100.49684,r:4.4,rc:1651,tip:'카오산로드 한복판의 EDM 클럽. 세계 클럽 랭킹에도 오른 곳, 여권 사진본으로 입장 가능. 프로모션 딜 체크 추천.',a:'Khao San Rd',pid:'ChIJI1joEm2Z4jAR1RIdaTWebBQ',z:'oldtown'},
+ {n:'더 원 카오산 (The One)',c:'night',lat:13.75921,lng:100.49690,r:4.3,rc:2662,tip:'카오산 인기 클럽바. DJ+라이브 싱어+댄서 공연, 무료입장. 주문 전 메뉴판 가격 확인 권장.',a:'Khao San Rd',pid:'ChIJqUczUW2Z4jARDp-Hi36LAFk',z:'oldtown'},
+ {n:'타완댕 저먼 브루어리',c:'night',lat:13.69689,lng:100.54580,r:4.5,rc:7318,tip:'방콕의 전설적 로컬 비어홀. 자체 양조 맥주+태국식 안주에 매일 밤 대형 무대 공연. 현지인 회식 문화 체험 명소.',a:'Rama III Rd',pid:'ChIJezBpdluf4jARn7eWl315crw',z:'etc'},
+ {n:'보이드 클럽 (VOID) 🆕',c:'night',lat:13.75349,lng:100.57361,r:4.8,rc:2274,tip:'2026년 태국 1위 EDM 클럽 (DJ Mag 세계 67위). 라마9 원컴플렉스, 26m 6K LED 스크린과 페스티벌급 사운드. 입장 500밧(1드링크 포함), 최신 방콕 나이트라이프의 정답.',a:'One Complex, Rama 9',pid:'ChIJnSASQQef4jARcpLU7fFqW5U',z:'rca'},
+ {n:'엘리시움 이머시브 클럽 🆕',c:'night',lat:13.75149,lng:100.57271,r:4.7,rc:683,tip:'RCA 브라보BKK 6층의 신흥 강자. 이머시브 연출과 사운드로 급부상, 저녁 6시부터 새벽 4시까지 롱런.',a:'Bravo BKK 6F, RCA',pid:'ChIJr49cbgef4jARu18DeFak5qw',z:'rca'},
+ {n:'싱싱 시어터 (Sing Sing) 🆕',c:'night',lat:13.72825,lng:100.57350,r:4.3,rc:1374,tip:'1920년대 상하이 콘셉트의 태국 최고 비주얼 클럽. 무료입장(테이블은 예약 필수), 사진 명소로도 유명.',a:'Sukhumvit 45',pid:'ChIJQyjXvgCf4jAR062iYhX4elc',z:'sukhumvit'},
+ {n:'빔 (BEAM) — 통로',c:'night',lat:13.73480,lng:100.58313,r:4.1,rc:285,tip:'방콕 언더그라운드 테크노·하우스의 성지. 메인룸+힙합룸(Katsu) 2개 존, 입장 600밧. 촬영 금지·신발 규정 등 엄격.',a:'Soi Thong Lo, 통로',pid:'ChIJLdy5_FKe4jARBMDX2-Q5dlg',z:'thonglor'},
+ {n:'인새니티 (Insanity)',c:'night',lat:13.74517,lng:100.55653,r:3.6,rc:716,tip:'수쿰빗 소이11의 대형 클럽. 입장 남 300/여 200밧(1드링크). 관광객·현지인 혼합, 테이블 미니멈 높으니 사전 확인.',a:'Sukhumvit Soi 11',pid:'ChIJ-S3s3eOe4jARrRD4X6S5RjE',z:'nana'},
+ {n:'어밴던드 맨션 🆕',c:'night',lat:13.73526,lng:100.56005,r:4.8,rc:6981,tip:'폐저택 콘셉트의 라이브 재즈 칵테일 바. 샹들리에와 빈티지 인테리어, 리뷰 7천 개 육박. 주말은 예약 권장.',a:'Sukhumvit 14',pid:'ChIJ82hpAWaf4jARIPIc3KEAPtw',z:'nana'},
+ {n:'스피커박스 라이브하우스 🆕',c:'night',lat:13.74198,lng:100.58560,r:4.8,rc:416,tip:'인디·언더그라운드 밴드 공연장. 대형 LED와 최상급 사운드, 라운지(당구대)+라이브홀 2개 룸 구성.',a:'Sukhumvit 55, 통로',pid:'ChIJ0Rzsosaf4jARH8VgXDvwuVc',z:'thonglor'},
+ {n:'어보브 일레븐 루프탑',c:'night',lat:13.74566,lng:100.55677,r:4.6,rc:6199,tip:'프레이저스위트 33층, 니케이(페루+일식) 요리와 함께하는 루프탑. 소이11 나이트 시작 코스로 최적. 드레스코드 있음.',a:'Sukhumvit 11, 33F',pid:'ChIJAVT7t-ie4jARe7wAWZrzW4U',z:'nana'},
+ {n:'어퍼 하우스 (Upper House) 🆕',c:'night',lat:13.72154,lng:100.56617,r:4.7,rc:862,tip:'수쿰빗24 인기 라운지클럽. DJ 셋과 세련된 인테리어로 현지 트렌드세터들이 모임. 미니멈 스펜딩(약 1만밧) 있으니 사전 확인 필수.',a:'Sukhumvit 24',pid:'ChIJ9_LwVwCf4jAR189LAejqlDI',z:'sukhumvit'},
+ {n:'돕앤더티 (Dope & Dirty) 🆕',c:'night',lat:13.73231,lng:100.58619,r:4.4,rc:1179,tip:'통로 소이63의 힙합·R&B 라운지. 다크하고 언더그라운드한 무드, 현지 젊은층 비율 높음. 24시간 영업.',a:'Sukhumvit 63, 통로',pid:'ChIJ9fRzY52f4jAReXVsUXEx4M0',z:'thonglor'},
+ {n:'404 클럽 낫파운드 🆕',c:'night',lat:13.73223,lng:100.56629,r:4.8,rc:150,tip:'엠스피어 5M층의 신상 클럽. 평점 4.8, 위치 대비 가격 합리적. 금·토·일 3일만 오픈(21:30~03:30).',a:'EmSphere 5M, 프롬퐁',pid:'ChIJcW_pdQCf4jARAku2x69mif4',z:'sukhumvit'},
+ {n:'왓츠해픈드 (What\'s Happened) 🆕',c:'night',lat:13.73212,lng:100.56637,r:4.8,rc:688,tip:'엠스피어 5층, 올드스쿨 맨션 콘셉트의 하우스파티형 클럽. 최신 히트곡+올드스쿨 믹스, 주말 예약 권장.',a:'EmSphere 5F, 프롬퐁',pid:'ChIJOfnpMfCf4jARhUqcb2KY7uw',z:'sukhumvit'},
+ {n:'살론 (SALONE) 🆕',c:'night',lat:13.73188,lng:100.58616,r:4.8,rc:1500,tip:'통로 소이63의 트렌디 힙합 라운지클럽. 어두운 조명의 프라이빗한 분위기, 평점 4.8. 드레스코드(슬리퍼 불가) 엄격.',a:'Sukhumvit 63, 통로',pid:'ChIJuylzLF6f4jARGDscDL9Kzb0',z:'thonglor'},
+ {n:'하우스 오브 사보이 🆕',c:'night',lat:13.72571,lng:100.56799,r:4.9,rc:490,tip:'수쿰빗의 신상 라운지. 평점 4.9로 현재 최고 수준, 음악·분위기 호평. 테이블 예약 시 확인 재차 권장.',a:'Sukhumvit Rd 2F',pid:'ChIJKx-y2R6f4jARYg0CnZI8sl8',z:'sukhumvit'},
+ {n:'G.O.T 방콕 (GOT Bangkok) 🆕',c:'night',lat:13.72217,lng:100.56632,r:4.4,rc:890,tip:'수쿰빗24의 레트로 감성 라운지바. 23시 이후 본격적으로 달아오름, 1층 테이블 예약 가능. 시그니처는 에스프레소 마티니.',a:'Sukhumvit 24',pid:'ChIJ6VzCdgCf4jARkcvAJ90K9fs',z:'sukhumvit'},
+ {n:'바카라 (BACCARAT) 🆕',c:'night',lat:13.72118,lng:100.56603,r:4.4,rc:1777,tip:'수쿰빗24의 하우스·일렉트로닉 라운지클럽. 프라이빗룸(미니멈 1~2만밧) 있어 파티용으로 인기.',a:'Sukhumvit 24',pid:'ChIJb58buQqf4jARFkoDbySHApI',z:'sukhumvit'},
+ {n:'트루스 오어 데어 (통로) 🆕',c:'night',lat:13.73132,lng:100.58456,r:4.0,rc:65,tip:'실내+야외 2개 존의 통로 라운지바. 게임카드를 즐기며 마시는 콘셉트, 외부 음식 반입 가능. 목요일 휴무.',a:'Soi Promsri, 통로',pid:'ChIJmSEmRgCf4jAR8r7oj9PdHRo',z:'thonglor'},
+ {n:'살롱 키쿠 (Salon Kiku) 🆕',c:'night',lat:13.72634,lng:100.57644,r:4.8,rc:77,tip:'통로 뒷골목 옥상의 히든 내추럴와인 바. LP 셀렉션과 발코니 시티뷰, 아는 사람만 찾는 아지트.',a:'Sukhumvit 51, 통로 4F',pid:'ChIJzZ2SUoKf4jARQVtXIBlm8Ug',z:'thonglor'},
+ {n:'무스타치 (Mustache)',c:'night',lat:13.72724,lng:100.52503,r:4.6,rc:855,tip:'하우스·테크노 매니아를 위한 실롬 클럽. 금·토 이틀만 오픈(22:00~03:30), 입장 500밧. 유럽식 레이브 분위기.',a:'Decho Rd, 실롬',pid:'ChIJATe7LoGe4jARsDKWeIcgu9E',z:'silom'},
+ {n:'하바나 소셜 (Havana Social)',c:'night',lat:13.74559,lng:100.55587,r:4.4,rc:2507,tip:'쿠바 콘셉트 스피크이지. 공중전화 부스로 들어가는 히든 입구, 일요일 무료 살사 클래스. 입장 400밧(1드링크), 드레스코드 있음.',a:'Sukhumvit 11',pid:'ChIJPzDk6BGf4jARIn43300IF4Y',z:'nana'},
+ {n:'티추카 루프탑 바',c:'night',lat:13.72224,lng:100.58071,r:4.2,rc:7034,tip:'45~50층 정글 콘셉트 루프탑. 입장료 없이 음료만 주문, 방콕 360도 뷰. 일몰 시간 도착해야 자리 확보 가능.',a:'Sukhumvit 40, T-One 빌딩',pid:'ChIJPXYszxSf4jARvqTluQfT_is',z:'thonglor'},
+ {n:'타이타이 마사지 프롬퐁',c:'spa',lat:13.73007,lng:100.56942,r:4.7,rc:1413,tip:'BTS 프롬퐁역 인근, 오피스신드롬+허브볼 콤보가 인기. 룸마다 샤워시설 완비.',a:'Sukhumvit 24',pid:'ChIJ7Zwx0rSf4jARVNjq73ndUzo',z:'sukhumvit'},
+ {n:'타이타이 마사지 아속',c:'spa',lat:13.73558,lng:100.56201,r:4.8,rc:1569,tip:'BTS 아속역 도보권 체인점. 아로마·타이 전통 마사지 모두 평 좋고 자정까지 영업.',a:'Sukhumvit 18',pid:'ChIJX2fMUBmf4jARkHfLEosk0vc',z:'sukhumvit'},
+ {n:'로프트 타이 스파 (수쿰빗 38)',c:'spa',lat:13.71713,lng:100.57952,r:4.9,rc:1228,tip:'프라이빗룸(욕조 포함) 고급 스파. 스크럽·페이셜까지 있는 풀 패키지형, 예약 필수.',a:'Sukhumvit 38, 통로',pid:'ChIJId0YJVif4jARWDSL7vugeGQ',z:'thonglor'},
+ {n:'타이타이 마사지 나나',c:'spa',lat:13.74093,lng:100.55306,r:4.8,rc:3004,tip:'나나역 인근, 18시 이전 방문 시 할인. 타이거밤 마사지 등 독특한 옵션, 새벽 2시까지.',a:'Sukhumvit 4',pid:'ChIJ_1SRcQSf4jARP9DMnGQblEU',z:'nana'},
+ {n:'왓프라깨오 (에메랄드 사원)',c:'sight',lat:13.75164,lng:100.49270,r:4.7,rc:43334,tip:'방콕 필수 코스. 복장 규정(긴바지·소매) 있고 오전 일찍 가야 덜 붐빈다.',a:'Na Phra Lan Rd',pid:'ChIJ5Wl37g6Z4jARiP4itarBPDQ',z:'oldtown'},
+ {n:'왓아룬 (새벽 사원)',c:'sight',lat:13.74387,lng:100.48844,r:4.7,rc:44798,tip:'짜오프라야 강변의 랜드마크. 일몰·야간 라이트업이 특히 아름답고 도선으로 건너가는 재미.',a:'Wang Doem Rd, 방콕야이',pid:'ChIJaSv_6gaZ4jARnbiUVn6Z_YY',z:'oldtown'},
+ {n:'왓수탓',c:'sight',lat:13.75104,lng:100.50109,r:4.8,rc:10592,tip:'자이언트 스윙 옆 왕실 1급 사원. 유명 사원 대비 한적해 여유롭게 벽화 감상 가능.',a:'Bamrung Mueang Rd',pid:'ChIJg-IqNBGZ4jAR0dPx_MR-gTk',z:'oldtown'},
+ {n:'왕궁 (그랜드 팰리스)',c:'sight',lat:13.74986,lng:100.49158,r:4.6,rc:78960,tip:'1782년 지어진 방콕의 심장. 왓프라깨오와 같은 단지라 함께 관람, 오후 3시 반 입장 마감.',a:'Phra Nakhon',pid:'ChIJPzZsMU6Z4jARQUzvk913bCo',z:'oldtown'},
+ {n:'그랑데 센터포인트 수쿰빗 55',c:'stay',lat:13.7317388,lng:100.5824466,r:4.6,rc:5648,tip:'통로 중심의 5성 호텔. 미니바 무료, 루프탑 수영장과 조식 평이 매우 좋음. BTS까지 도보 15분은 감안.',a:'Soi Thong Lo, 통로',pid:'ChIJF41Gxqyf4jARbUM2nainGDo',z:'thonglor'},
+ {n:'힐튼 수쿰빗 방콕',c:'stay',lat:13.7285987,lng:100.5690408,r:4.4,rc:3835,tip:'BTS 프롬퐁역 도보권. 엠쿼티어·엠스피어 인접, 루프탑 수영장과 24시간 짐. 나이트 스팟 접근성 최고.',a:'Sukhumvit 24',pid:'ChIJw14X4AOf4jARWu3MODg3Lz4',z:'sukhumvit'},
+ {n:'S31 수쿰빗 호텔',c:'stay',lat:13.7336415,lng:100.5658592,r:4.2,rc:3036,tip:'가성비 대비 만족도 높은 4성. 조식 뷔페·수영장·사우나 무료, 엠스피어 바로 맞은편.',a:'Sukhumvit 31',pid:'ChIJX4lit-me4jARoS9DGLK__8s',z:'sukhumvit'},
+ {n:'아카라 방콕',c:'stay',lat:13.7558961,lng:100.5412317,r:4.4,rc:1623,tip:'프라투남 인근 부티크 호텔. 매일 오후 애프터눈 티 무료, 루프탑 수영장 스카이라인 뷰.',a:'Si Ayutthaya Rd',pid:'ChIJoVRY5Mee4jARI_sqfC92WAM',z:'siam'},
+ {n:'더 그래비티크 호텔 카오산',c:'stay',lat:13.7606805,lng:100.4978192,r:4.7,rc:519,tip:'카오산 근처지만 소음 없이 조용한 신축 호텔. 루프탑 바·짐 완비, 평점 4.7.',a:'Thanon Tani, 카오산',pid:'ChIJzVSvU4GZ4jARpp8FL-J2mbY',z:'oldtown'},
+ {n:'라위깐라야 웰니스 리조트',c:'stay',lat:13.767825,lng:100.5050334,r:4.5,rc:797,tip:'방콕 구시가의 콜로니얼풍 정원 리조트. 로컬 감성 지역, 마사지 시설 호평.',a:'Krung Kasem Rd',pid:'ChIJ30zw-HeZ4jAR_hxbc9NpVEw',z:'oldtown'}
+]},
+{id:'pty',name:'파타야',center:[12.935,100.885],zoom:12,places:[
+ {n:'할란스 파타야',c:'food',lat:12.93294,lng:100.89882,r:4.9,rc:1481,tip:'파타야 최고 평점 스테이크하우스. 비프 웰링턴·투르네도 로시니 유명, 월요일 휴무 저녁만 영업.',a:'Bang Lamung, 촌부리',pid:'ChIJOa63NASVAjERl2LW0uwBMKg',z:'central'},
+ {n:'스카이바 서머 클럽',c:'food',lat:12.94577,lng:100.88862,r:4.9,rc:478,tip:'수영장 딸린 루프탑 레스토랑·바. 매일 DJ 세션, 선셋 명소로 식사와 칵테일 모두 가능.',a:'Pattaya 2nd Rd',pid:'ChIJafzsZgC9AjERANCUgH4ygBs',z:'central'},
+ {n:'더 콜렉티브 파타야',c:'food',lat:12.94772,lng:100.88476,r:4.8,rc:2169,tip:'비치프론트 BBQ·피자 맛집. 립+브리스킷 콤보 플래터가 시그니처, 바다뷰 테라스.',a:'Beach Rd, 홀리데이인',pid:'ChIJsejiuTO9AjERnTBniNqKjII',z:'central'},
+ {n:'문 웨일 (Moon Whale)',c:'night',lat:12.93002,lng:100.87799,r:4.8,rc:2410,tip:'비치로드 오션뷰 루프탑 칵테일 바. DJ와 함께 즐기는 선셋, 화장실까지 깨끗하다는 평.',a:'Beach Rd',pid:'ChIJ87kDdwCXAjERHajL3VvwjWI',z:'walking'},
+ {n:'잘와 클럽 (JALWA)',c:'night',lat:12.92615,lng:100.87243,r:4.7,rc:2636,tip:'워킹스트리트 대형 클럽. EDM·인터내셔널 음악, 새벽 4시까지. 주류 가격은 사전 확인 필수.',a:'Walking St',pid:'ChIJKcD-RZaXAjERfNrT2fwNC1s',z:'walking'},
+ {n:'릴라 클럽 (Leela)',c:'night',lat:12.92519,lng:100.87090,r:4.6,rc:1041,tip:'워킹스트리트 무료입장 클럽. 밤 10시 오픈, 심야에 붐비는 스타일.',a:'Walking St',pid:'ChIJ6RyWaJ6XAjERoMdo2FVLqGM',z:'walking'},
+ {n:'더 스톤스 하우스',c:'night',lat:12.92721,lng:100.87453,r:4.2,rc:828,tip:'라이브 밴드 공연 중심의 워킹스트리트 바. 합리적 주류 가격에 태국 밴드 음악 감상.',a:'Walking St',pid:'ChIJX86n6hOWAjERfWDUeNdbKe0',z:'walking'},
+ {n:'클럽 인섬니아 (Insomnia)',c:'night',lat:12.92583,lng:100.87151,r:4.3,rc:3903,tip:'워킹스트리트 최고 인지도의 클럽. 1층 iBar 테라스에서 시작해 위층 메인플로어로. 서양인 비율 높고 사운드·레이저 수준급.',a:'Walking St',pid:'ChIJpetx9hSWAjERade3Qi0udfc',z:'walking'},
+ {n:'808 나이트클럽',c:'night',lat:12.92662,lng:100.87337,r:3.8,rc:506,tip:'힙합·아프로비트 전문 로컬 클럽. 현지 태국인 비율이 높아 로컬 분위기, 새벽 4시까지 하는 애프터 명소.',a:'Walking St',pid:'ChIJxd42ehSWAjER32t6lmeTIQk',z:'walking'},
+ {n:'더 원 마사지',c:'spa',lat:12.92701,lng:100.87433,r:4.9,rc:5497,tip:'워킹스트리트에 있지만 정통 스파. 리뷰 5천 개 이상, 마사지 후 티·디저트 서비스.',a:'Walking St',pid:'ChIJy_LqEA2XAjERg6ASYUaqcIo',z:'walking'},
+ {n:'실라돈 스파',c:'spa',lat:12.96373,lng:100.89052,r:4.9,rc:932,tip:'나끌루아 지역 합리적 가격의 스파. 사전 문진표로 압 조절, 커플 패키지 인기. 예약 권장.',a:'Soi Pho Samphan',pid:'ChIJJ7ICdAq-AjERKptqYlscB7Q',z:'naklua'},
+ {n:'티트리 스파',c:'spa',lat:12.94749,lng:100.88548,r:5.0,rc:895,tip:'홀리데이인 내 5.0 만점 스파. 딥티슈·아로마 모두 수준급, 가격대는 다소 높은 편.',a:'Pattaya 1st Rd',pid:'ChIJ2W8J2P69AjERvmVpa8gLAAw',z:'central'},
+ {n:'진리의 성전 (Sanctuary of Truth)',c:'sight',lat:12.97287,lng:100.88913,r:4.7,rc:44160,tip:'못 하나 없이 나무로만 지은 거대 목조 건축. 파타야 대표 명소, 2~3시간 여유 있게.',a:'Na Kluea Soi 12',pid:'ChIJHaK3Sd-9AjERaQw5hd_K3VU',z:'naklua'},
+ {n:'미니 시암',c:'sight',lat:12.95532,lng:100.90891,r:4.2,rc:7900,tip:'세계 랜드마크 미니어처 공원. 라이트업되는 저녁 시간대 방문 추천.',a:'Sukhumvit Rd',pid:'ChIJGyhn0uCe4jARKsHCvBXG7Dw',z:'naklua'},
+ {n:'타이거 파크 파타야',c:'sight',lat:12.87081,lng:100.90275,r:4.3,rc:16687,tip:'호랑이와 근접 촬영이 가능한 체험형 파크. 사파리 카 투어 옵션도 있음.',a:'Sukhumvit Rd',pid:'ChIJ0cP9RBeUAjERNe0EwupDJus',z:'etc'},
+ {n:'두짓타니 파타야',c:'stay',lat:12.9505757,lng:100.8852883,r:4.5,rc:6500,tip:'프라이빗 비치를 가진 대표 5성 리조트. 터미널21 인접, 선셋 뷰가 일품.',a:'Beach Rd',pid:'ChIJQeBAPwSWAjERZ1R-C9zxC_c',z:'naklua'},
+ {n:'하드록 호텔 파타야',c:'stay',lat:12.9392432,lng:100.8855926,r:4.5,rc:4984,tip:'비치 바로 앞. 슬라이드 있는 대형 수영장으로 가족 여행객에게 인기, 키즈클럽 운영.',a:'Pattaya Sai Song Rd',pid:'ChIJM9ybqwaWAjERoCUiQtBxBx0',z:'central'},
+ {n:'가든 클리프 리조트 & 스파',c:'stay',lat:12.9698704,lng:100.8866216,r:4.3,rc:1870,tip:'나끌루아의 프라이빗 비치 리조트. 전 객실 발코니, 터미널21 무료 셔틀 운행.',a:'Na Kluea 16',pid:'ChIJCdQKt-G9AjER1a9M7NTZKxQ',z:'naklua'},
+ {n:'생추어리 리조트 파타야',c:'stay',lat:12.9095923,lng:100.8578119,r:4.2,rc:2323,tip:'프라땀낙의 조용한 리조트. 시내 번잡함을 피하고 싶을 때, 7-11 바로 앞.',a:'Phratamnak Rd',pid:'ChIJo76uo1CXAjERB_NPwRZvyrE',z:'jomtien'}
+]},
+{id:'cnx',name:'치앙마이',center:[18.789,98.98],zoom:13,places:[
+ {n:'가든 투 테이블',c:'food',lat:18.78651,lng:98.99043,r:4.9,rc:1956,tip:'올드시티 채소 중심 타이 레스토랑. 베지 카오소이가 시그니처, 저녁엔 대기 필수.',a:'Ratchapakhinai Rd, 올드시티',pid:'ChIJT2UZ_Hw72jARiJRwNfxTJVU',z:'oldcity'},
+ {n:'마담 리 란나 & 난양',c:'food',lat:18.78264,lng:98.97812,r:4.7,rc:369,tip:'타이+싱가포르 퓨전 가스트로바. 오리 카오소이와 칵테일 조합이 유명.',a:'Arak Rd, 올드시티',pid:'ChIJOxNGI-c72jARqkyapkR6TuM',z:'oldcity'},
+ {n:'롯라문 (Rodlamun)',c:'food',lat:18.78963,lng:98.98584,r:4.9,rc:359,tip:'북부요리 전문 예쁜 로컬 식당. 오후 4시까지만 영업하니 점심 방문 추천.',a:'Jhaban Rd, 올드시티',pid:'ChIJiX1GRgY72jARNvzX_L-Vz90',z:'oldcity'},
+ {n:'어나더 월드',c:'food',lat:18.78421,lng:98.99194,r:4.9,rc:781,tip:'히피 감성의 라이브음악 레스토랑. 카오소이·마사만 커리가 대표, 저녁에만 오픈.',a:'Moon Muang Rd',pid:'ChIJw1nhHac72jARTN1MvZDSAT8',z:'oldcity'},
+ {n:'어라이즈 루프탑 바 (님만)',c:'night',lat:18.79730,lng:98.96943,r:4.6,rc:507,tip:'님만해민의 산+시티뷰 루프탑. 선셋 칵테일 명소, 요일별 휴무 확인 필요.',a:'Nimman Rd',pid:'ChIJGxdHxYk62jARhD_igQDREvA',z:'nimman'},
+ {n:'푸라비다 바 (원님만)',c:'night',lat:18.80040,lng:98.96795,r:4.4,rc:226,tip:'원님만 3층 라틴 바. 살사 음악과 댄스플로어, 시가룸까지 있는 독특한 공간.',a:'One Nimman 3F',pid:'ChIJF_yPC1A72jARslBy-HInp78',z:'nimman'},
+ {n:'카멜리아 카페 & 뮤직바',c:'night',lat:18.80090,lng:98.96749,r:4.7,rc:1344,tip:'마야몰 맞은편 라이브밴드 바. 생맥주 종류 다양하고 거리 구경하기 좋은 자리.',a:'Nimman Rd',pid:'ChIJYX0-5t472jARRcMfc3yUCDk',z:'nimman'},
+ {n:'수르 바 (Surr Bar)',c:'night',lat:18.79914,lng:98.96877,r:4.9,rc:885,tip:'아트 호텔 8층의 예술 콘셉트 칵테일 바. 명화를 모티브로 한 시그니처 칵테일.',a:'Nimman Soi 3',pid:'ChIJYYYChyY72jARWFSeu-ITZnQ',z:'nimman'},
+ {n:'조 인 옐로우 (Zoe in Yellow)',c:'night',lat:18.79089,lng:98.99049,r:4.2,rc:4927,tip:'치앙마이 배낭여행자 나이트라이프의 성지. 올드시티 한복판, 밤 11시 이후 광장 전체가 클럽으로 변신. 외국인+로컬 믹스.',a:'Ratvithi Rd, 올드시티',pid:'ChIJxbtGdJg62jARlc0cgtmxP54',z:'oldcity'},
+ {n:'웜업 카페 (Warm Up Cafe)',c:'night',lat:18.79525,lng:98.96551,r:4.3,rc:2949,tip:'20년 넘게 사랑받은 님만해민의 전설적 로컬 클럽. 라이브존·EDM존 분리, 현지 대학생·젊은층 인기 1순위.',a:'Nimman Rd',pid:'ChIJMVzfImM62jARFvgBR2MjagI',z:'nimman'},
+ {n:'앤티크 마사지',c:'spa',lat:18.77646,lng:98.98831,r:4.9,rc:2621,tip:'빈티지 하우스 콘셉트의 마사지. 웰컴 코코넛워터와 딥티슈 실력으로 유명.',a:'Kotchasarn Rd Lane 5',pid:'ChIJU0gmUWUx2jAR_cVoAECEN1A',z:'oldcity'},
+ {n:'지라 스파 (Zira Spa)',c:'spa',lat:18.79054,lng:98.99291,r:4.9,rc:3691,tip:'치앙마이 대표 럭셔리 스파. 란나 전통 트리트먼트 패키지, 1~2일 전 예약 필수.',a:'Ratvithi Rd, 올드시티',pid:'ChIJyyGI5aI62jARNyUulomat4E',z:'oldcity'},
+ {n:'더 홈 마사지 & 스파',c:'spa',lat:18.77966,lng:98.99404,r:4.9,rc:3646,tip:'가성비와 실력 모두 잡은 곳. 캔들 마사지 인기, 전기장판 데운 베드가 포인트.',a:'Ragang Rd',pid:'ChIJ99xHYwow2jARXfNRbi3edGw',z:'riverside'},
+ {n:'드 레스트 스파 (님만)',c:'spa',lat:18.79965,lng:98.96717,r:4.9,rc:636,tip:'바디맵에 원하는 부위·강도를 직접 표시하는 맞춤 마사지. 자정까지 영업.',a:'Nimman Rd',pid:'ChIJkSViCog72jARrRkb6g7oktg',z:'nimman'},
+ {n:'왓체디루앙',c:'sight',lat:18.78697,lng:98.98658,r:4.7,rc:18562,tip:'올드시티 중심의 거대 고대 체디. 일몰~야간 조명이 압권, 저녁 승려 독경 시간이 특별.',a:'Prapokklao Rd',pid:'ChIJFRQRM5k62jARuqhLBJpw91w',z:'oldcity'},
+ {n:'왓프라싱',c:'sight',lat:18.78853,lng:98.98199,r:4.7,rc:17469,tip:'란나 건축의 정수를 보여주는 치앙마이 대표 사원. 전통의상 대여 촬영 명소.',a:'Samlarn Rd',pid:'ChIJbyRKbps62jAR6VTNF-fZVpY',z:'oldcity'},
+ {n:'왓팔랏 (Wat Pha Lad)',c:'sight',lat:18.79940,lng:98.93415,r:4.8,rc:8122,tip:'도이수텝 가는 길의 숲속 사원. 몽크 트레일로 하이킹해서 올라가면 더 특별.',a:'도이수텝 산중턱',pid:'ChIJ66D0IBo62jARiGi7NFub710',z:'suthep'},
+ {n:'왓우몽 (터널 사원)',c:'sight',lat:18.78273,lng:98.95211,r:4.6,rc:11425,tip:'숲속 지하 터널이 있는 독특한 사원. 입장료 20밧, 조용히 산책하기 좋은 분위기.',a:'Su Thep',pid:'ChIJnWhAb3A62jARWVBZnaOa7-0',z:'suthep'},
+ {n:'호텔 센사이 님만',c:'stay',lat:18.7941766,lng:98.9706385,r:4.9,rc:431,tip:'평점 4.9. 프라이빗 플런지풀 객실이 시그니처, 조식 퀄리티 최상급. 님만 도보권.',a:'Siri Mangkalajarn Rd',pid:'ChIJg2IdAV872jARX7g_HFYiQLw',z:'nimman'},
+ {n:'하우스 (House)',c:'stay',lat:18.7876519,lng:98.9811069,r:4.8,rc:302,tip:'올드시티 빈티지 감성 부티크. 객실은 아담하지만 인테리어와 서비스가 뛰어남.',a:'Samlarn Lane 1, 올드시티',pid:'ChIJe3GMXZs62jARXsOBnCNfZUs',z:'oldcity'},
+ {n:'U 님만 치앙마이',c:'stay',lat:18.8006605,lng:98.9680188,r:4.7,rc:3438,tip:'님만 중심, 원님만·마야몰 도보 1분. 24시간 짐, 유연한 체크인 정책.',a:'Nimman Lane 1',pid:'ChIJA7SL42E62jARIlkSgM1kXaY',z:'nimman'},
+ {n:'G 님만 치앙마이',c:'stay',lat:18.7952268,lng:98.9677457,r:4.7,rc:314,tip:'미니멀 화이트 톤 부티크. 원형 실내 수영장이 명물, 저녁 와인·아이스크림 무료.',a:'Nimman Soi 17',pid:'ChIJqUWojUM72jARfGuxSi2IdqY',z:'nimman'},
+ {n:'아트 마이 갤러리 호텔',c:'stay',lat:18.7991237,lng:98.9688412,r:4.7,rc:2673,tip:'층마다 다른 아티스트 콘셉트의 아트 호텔. 루프탑 수영장에서 시티뷰 감상.',a:'Nimman Lane 3',pid:'ChIJMdA7ImI62jARl5LdYiMDALM',z:'nimman'},
+ {n:'더 치앙마이 올드타운 호텔',c:'stay',lat:18.7858669,lng:98.9787316,r:4.7,rc:430,tip:'성벽 안 럭셔리 부티크. 란나 스타일 인테리어, 수영장·스파·짐 완비.',a:'Ratchamanka Rd, 올드시티',pid:'ChIJB4ZtP4M62jARzWkW-KBbcsk',z:'oldcity'}
+]},
+{id:'cri',name:'치앙라이',center:[19.885,99.815],zoom:11,places:[
+ {n:'홈짠 (Homchan)',c:'food',lat:19.90642,lng:99.82769,r:4.8,rc:1167,tip:'정원 딸린 분위기 좋은 레스토랑. 게살 커리·통생선 튀김과 태국 디저트 세트가 유명.',a:'Baanpa Pragarn Rd',pid:'ChIJN9H8YJcH1zAR-MwiyPeG7KA'},
+ {n:'타완댕 마하손 치앙라이',c:'night',lat:19.88842,lng:99.83289,r:4.6,rc:633,tip:'치앙라이 최대 나이트라이프 홀. 무료입장, 콘서트급 무대에서 전통무용부터 DJ까지 논스톱 공연. 로컬 나이트 문화 체험 1순위.',a:'Phahon Yothin Rd',pid:'ChIJg3rwkmsG1zARkFFYYKP_Jz8'},
+ {n:'바랍 (Barrab)',c:'food',lat:19.90327,lng:99.83251,r:4.7,rc:1894,tip:'주인장이 메뉴를 직접 설명해주는 북부요리 맛집. 항레이 커리+로띠 조합 필수.',a:'Phaholyothin Rd',pid:'ChIJfwpRkGYG1zAR3uo5gweN-m8'},
+ {n:'치윗 탐마다',c:'food',lat:19.92171,lng:99.84507,r:4.6,rc:7118,tip:'콕강변 콜로니얼풍 카페·비스트로. 낮엔 브런치, 밤엔 로맨틱한 강변 디너.',a:'Rim Kok 강변',pid:'ChIJeWMpkfAG1zARs3NJVf_6_T0'},
+ {n:'시아미스 스파',c:'spa',lat:19.90427,lng:99.82857,r:4.9,rc:793,tip:'천연 재료 트리트먼트로 유명. 오이 페이셜과 핫컴프레스 마사지가 대표 메뉴.',a:'Sanambin Rd',pid:'ChIJsQ8y5mUG1zAR1gzPYw0z2Uk'},
+ {n:'타임 타이 마사지 (TYME)',c:'spa',lat:19.92488,lng:99.83893,r:4.9,rc:84,tip:'블루템플 인근 신상 스파. 영어 소통 원활, 오피스신드롬+핫스톤 콤보 추천.',a:'Rim Kok',pid:'ChIJkzAkyMIH1zAR08TefJbsXeM'},
+ {n:'라차야 마사지',c:'spa',lat:19.90352,lng:99.83320,r:4.9,rc:79,tip:'시내 중심 소규모 로컬 마사지. 정성스러운 관리와 착한 가격, 밤 11시까지.',a:'Phaholyothin Rd',pid:'ChIJ_SYuQWIH1zARdNgsXgiwJn8'},
+ {n:'왓롱쿤 (백색 사원)',c:'sight',lat:19.82327,lng:99.76271,r:4.6,rc:24988,tip:'치앙라이의 상징, 눈부신 화이트 템플. 오픈 직후에도 붐비니 평일 정오 전후가 오히려 한산.',a:'Pa O Don Chai',pid:'ChIJD5RZzt-31zARo7esjg3V_Co'},
+ {n:'더 리버리 바이 까타타니',c:'stay',lat:19.9174144,lng:99.8269884,r:4.8,rc:1827,tip:'치앙라이 최고 평점 호텔. 워터파크·키즈클럽 완비, 야시장 셔틀 운행.',a:'Kraisorasit Rd',pid:'ChIJQSxhTEoH1zARWdACSk41OuU'},
+ {n:'르 메르디앙 치앙라이 리조트',c:'stay',lat:19.9222353,lng:99.8542009,r:4.7,rc:2819,tip:'콕강변 리조트. 넓은 객실과 수준급 짐, 시내에서 차로 10분.',a:'Kwae Wai Rd',pid:'ChIJWSmVVPwG1zAR1IPCxkRO2TU'},
+ {n:'까띨리야 마운틴 리조트 & 스파',c:'stay',lat:20.2099573,lng:99.7936811,r:4.6,rc:862,tip:'매짠 산속 리조트. 일출 뷰가 압권, 시내에서 멀지만 자연 속 휴식에 최적.',a:'Pha Sang, Mae Chan',pid:'ChIJAQAAAADj1jARYiwefDFkegg'}
+]},
+{id:'pai',name:'빠이',center:[19.345,98.447],zoom:13,places:[
+ {n:'투 시스터즈',c:'food',lat:19.36307,lng:98.45160,r:4.8,rc:1278,tip:'빠이 밸리 파노라마 루프탑 식당. 미얀마식 티립 샐러드와 카오소이, 선셋 명당.',a:'Mae Hi',pid:'ChIJ_____y6A2jARPDNZOqNgAo4'},
+ {n:'센트리코 (멕시칸)',c:'food',lat:19.35880,lng:98.44365,r:4.8,rc:2621,tip:'워킹스트리트 중심의 멕시칸 맛집. 비리아 타코와 패션프루트 모히토가 인기.',a:'Chai Songkhram Rd',pid:'ChIJ5530kC2B2jARxgp0tJRsw0A'},
+ {n:'저크 스팟 (Jerk Spot)',c:'food',lat:19.35672,lng:98.44359,r:4.9,rc:371,tip:'자메이카 저크 치킨 전문점. 푸짐한 양과 시즈닝, 저크 프라이즈 업그레이드 추천.',a:'Pai Moo 3',pid:'ChIJdRpsQJSB2jARQegG6MOZ74o'},
+ {n:'재즈 하우스',c:'night',lat:19.35967,lng:98.44347,r:4.7,rc:577,tip:'빠이 밤의 성지. 외부 음식 반입 가능, 해먹에 누워 라이브 재즈·어쿠스틱 감상.',a:'Viengtai',pid:'ChIJb9AqYTKA2jARKQtKBJRU2xM'},
+ {n:'트웬티투 스피크이지',c:'night',lat:19.35902,lng:98.44078,r:5.0,rc:35,tip:'새로 생긴 히든 칵테일 바. 해피아워(18~21시) 2+1, 편안한 분위기.',a:'Pai Moo 5',pid:'ChIJ2ZmWk_-B2jAR4FcONsoN8VA'},
+ {n:'바이닐 스카이 라운지',c:'night',lat:19.35818,lng:98.44442,r:4.6,rc:64,tip:'슈퍼문 호스텔의 루프탑 라운지 겸 클럽. LP 컬렉션과 선셋 뷰, 칵테일과 라멘까지 수준급.',a:'Viengtai',pid:'ChIJmetTEziB2jARDnSGwr5KkH4'},
+ {n:'빠이 캐년',c:'sight',lat:19.30614,lng:98.45252,r:4.5,rc:8285,tip:'빠이 대표 절경, 선셋 명소. 좁은 능선길은 미끄러우니 운동화 필수, 입장료는 기부제.',a:'Mae Hi',pid:'ChIJ-aDr8-iA2jARwq6VsSTh24M'},
+ {n:'빠이 빌리지 부티크 리조트',c:'stay',lat:19.3585556,lng:98.4448326,r:4.8,rc:857,tip:'워킹스트리트 한복판이지만 정글처럼 조경된 방갈로 리조트. 무료 주차.',a:'Vieng Tai, 빠이',pid:'ChIJtS4OSXKB2jARp26gYQI_SVI'},
+ {n:'리버리 시암 리조트',c:'stay',lat:19.3486677,lng:98.4421632,r:4.8,rc:708,tip:'영국-태국 부부가 직접 디자인한 레트로 감성 리조트. 시내 무료 셔틀, 허니문 인기.',a:'Vieng Tai',pid:'ChIJzXBJZzSA2jARFT3zS0fKfEA'},
+ {n:'더 오이아 빠이 리조트',c:'stay',lat:19.3530373,lng:98.4470995,r:4.7,rc:792,tip:'산토리니 콘셉트 화이트 리조트. 강변 카약 이용 가능, 조식 평이 매우 좋음.',a:'Mae Hi, 빠이',pid:'ChIJpRwCwDaA2jARCeGJKi1fhi8'}
+]},
+{id:'kkc',name:'콘깬',center:[16.437,102.828],zoom:12,places:[
+ {n:'깬 (I KAEN)',c:'food',lat:16.46389,lng:102.82574,r:4.8,rc:533,tip:'로컬 재료로 만든 퓨전 타이 파인다이닝. 포멜로 샐러드와 팟타이가 시그니처.',a:'Adulyaram Soi 3',pid:'ChIJf0xptY6LIjERbWeMQnxY5_M'},
+ {n:'엔 콘깬 (이자카야)',c:'food',lat:16.45273,lng:102.82398,r:4.9,rc:454,tip:'콘깬 로컬들이 사랑하는 일식 이자카야. 스시·사시미와 사케 셀렉션이 다양.',a:'Srimarat Rd',pid:'ChIJ_aVdNbCLIjERkiru-rVavdI'},
+ {n:'CQK 훠궈 (센트럴 콘깬)',c:'food',lat:16.43263,lng:102.82651,r:5.0,rc:2070,tip:'센트럴백화점 G층 충칭식 마라 훠궈. 신선한 재료와 5.0 만점 평점.',a:'Sri Chan Rd, 센트럴',pid:'ChIJaaOvFK-LIjERB-umvqRSycU'},
+ {n:'깬깨우 라이브하우스 & 루프탑',c:'night',lat:16.43013,lng:102.83224,r:4.9,rc:285,tip:'애드립 호텔 28층 루프탑 라이브바. 콘깬 야경 최고 명당, 수·일요일만 영업.',a:'Ad Lib Hotel 28F',pid:'ChIJ80-nrIVhIjER1qesEzF2OvU'},
+ {n:'바비 바 (Bobby Bar)',c:'night',lat:16.42760,lng:102.82304,r:4.6,rc:84,tip:'방콕 감성의 트렌디 바. 금요일 밤 분위기 좋고 가격은 로컬 수준.',a:'Mittraphap Rd',pid:'ChIJz05r9RGLIjERURchjbyxXqU'},
+ {n:'에덴 바 & 레스토랑',c:'night',lat:16.45744,lng:102.82439,r:4.8,rc:96,tip:'초록 가득한 비어가든. 크래프트 맥주 셀렉션과 라이브 밴드, 월요일 휴무.',a:'Nai Mueang',pid:'ChIJPRXP7xmLIjERMZhH26NNPDM'},
+ {n:'업 바 (UP BAR)',c:'night',lat:16.43387,lng:102.83563,r:3.7,rc:33,tip:'콘깬 로컬 클럽. 외국인에게도 친화적이라는 평, 목요일 밤부터 붐빔. 바텐더 쇼도 볼거리.',a:'Pracha Samran Rd',pid:'ChIJo1m1VACLIjERnnBGe-PlNTU'},
+ {n:'지라팟 건강 마사지',c:'spa',lat:16.43444,lng:102.80838,r:4.9,rc:218,tip:'현지인 추천 실력파 마사지. 합리적 가격에 만족도 높은 로컬 숍.',a:'Ban Ped',pid:'ChIJ1etxDgCLIjER0RXlQju1oVQ'},
+ {n:'아룬사바이 마사지 & 스파',c:'spa',lat:16.44795,lng:102.84148,r:5.0,rc:8,tip:'신규 오픈한 깔끔한 스파. 욕조 딸린 시설과 정확한 압으로 호평.',a:'Nai Mueang Moo 13',pid:'ChIJjVtpb96LIjERJVHGb9nQC94'},
+ {n:'왓농왕 (프라 마하탓 깬나콘)',c:'sight',lat:16.40815,lng:102.83422,r:4.7,rc:5975,tip:'9층 대탑을 오르면 콘깬 시내가 한눈에. 이싼 문화 유물 전시도 볼거리.',a:'Klang Mueang Rd',pid:'ChIJM4hT9pGJIjERGZdNRcAR604'},
+ {n:'콘깬 국립박물관',c:'sight',lat:16.44620,lng:102.83863,r:4.3,rc:548,tip:'이싼 지역 역사를 한 번에 훑기 좋은 곳. 반치앙 유적 전시가 하이라이트.',a:'Nai Mueang',pid:'ChIJvf-BtUeKIjERBZxGI8wFj4o'},
+ {n:'븡깬나콘 호수',c:'sight',lat:16.41469,lng:102.83820,r:4.5,rc:284,tip:'시민들의 휴식처. 저녁엔 호수 둘레 야시장이 열려 산책+먹거리 코스로 좋다.',a:'Nai Mueang',pid:'ChIJC7wM_auJIjERNjdxk6PGnKc'},
+ {n:'애드립 콘깬',c:'stay',lat:16.4299939,lng:102.8321869,r:4.7,rc:781,tip:'콘깬 이노베이션 센터 내 디자인 호텔. 28층 깬깨우 루프탑 바와 같은 건물.',a:'Srichan Rd',pid:'ChIJw-YBCHKLIjER01_3wvk4EWo'},
+ {n:'풀만 콘깬 라자 오키드',c:'stay',lat:16.4289672,lng:102.8302799,r:4.4,rc:3018,tip:'콘깬 대표 5성. 객실이 매우 넓고 독일식 레스토랑·바 인기. 시설은 다소 연식 있음.',a:'Pracha Samran Rd',pid:'ChIJAQAAAABhIjERHCqCw9Aw48w'},
+ {n:'코사 호텔 콘깬',c:'stay',lat:16.4294865,lng:102.8321272,r:4.2,rc:2107,tip:'시내 중심의 전통 있는 호텔. 수영장·짐·스누커홀 등 부대시설 다양.',a:'Sri Chan Rd',pid:'ChIJh8VJBCOKIjERaI9zr0q6tcQ'}
+]},
+{id:'udn',name:'우돈타니 (이싼)',center:[17.411,102.793],zoom:13,places:[
+ {n:'모닝 하우스',c:'food',lat:17.40645,lng:102.80208,r:4.8,rc:220,tip:'센트럴 인근 브런치 명가. 주인 부녀가 직접 운영하는 코티지풍 레스토랑.',a:'Sumpuntamit Rd',pid:'ChIJbV8tPW2dIzERDgUO3oh0MRg'},
+ {n:'우드 하우스 칩숍',c:'food',lat:17.42163,lng:102.80079,r:4.8,rc:351,tip:'영국식 피시앤칩스와 선데이 로스트 뷔페. 서양식·타이식 모두 커버하는 대형 메뉴.',a:'Phachauthit Rd',pid:'ChIJT0kzbQCdIzERnHsDxCS1KOE'},
+ {n:'굿 데이즈 카페',c:'food',lat:17.40407,lng:102.80280,r:4.6,rc:338,tip:'에그 베네딕트와 팬케이크가 유명한 베이커리 카페. 로프트 감성 인테리어.',a:'Pajaksinlapacom Rd',pid:'ChIJZTDgAH2dIzERSUbYGXT8vNY'},
+ {n:'DNA 펍 우돈',c:'night',lat:17.41891,lng:102.76767,r:4.4,rc:207,tip:'수백 명 수용 가능한 우돈타니 대형 클럽. 태국 밴드+DJ 로테이션, 월요일에도 붐빌 정도로 로컬 인기. 테이블 예약 추천.',a:'Ban Lueam',pid:'ChIJEZx9hHudIzERU3QFL2rHoOM'},
+ {n:'에까마이 우돈타니 (Ekkamai)',c:'night',lat:17.40099,lng:102.77325,r:4.6,rc:127,tip:'로컬 젊은층 중심의 라이브 클럽. 외국인도 부담 없이 즐길 수 있는 분위기, 새벽 1시까지.',a:'Ban Lueam',pid:'ChIJWZYqcSadIzER1M3fY6DOwx4'},
+ {n:'더 울버린 (The Wolverine)',c:'night',lat:17.40525,lng:102.79560,r:4.3,rc:83,tip:'시내 중심 무료입장 클럽. 태국 음악+EDM 믹스, 젊은 로컬 크라우드와 새벽 3시까지.',a:'Mak Khaeng',pid:'ChIJx5n_GQCdIzERnPPeQHDrLQM'},
+ {n:'유 온천 & 스파 (YU Onsen)',c:'spa',lat:17.39926,lng:102.80615,r:5.0,rc:350,tip:'일본식 프라이빗 온천+스크럽+마사지 풀코스. 5성급 서비스에 가성비까지, 만점 평점.',a:'기차역 인근',pid:'ChIJuWTUwhedIzERRKZvs6JQ4O8'},
+ {n:'굿타임 스파 & 마사지',c:'spa',lat:17.41683,lng:102.79839,r:4.9,rc:133,tip:'차이야품에서 온 실력파 팀의 신규 지점. 타이 오일 마사지 강추.',a:'Phachauthit Rd',pid:'ChIJMdmdAYCdIzER9o9v85WKd84'},
+ {n:'치라 마사지 & 스파',c:'spa',lat:17.41871,lng:102.78529,r:5.0,rc:13,tip:'농프라짝 공원 인근의 깔끔한 신상 스파. 친절한 서비스로 만점 유지 중.',a:'Mak Khaeng',pid:'ChIJuwISW_CdIzERRktm1iHcOwI'},
+ {n:'우돈타니 시티 박물관',c:'sight',lat:17.41166,lng:102.78184,r:4.6,rc:1213,tip:'무료 입장. 반치앙 유적부터 냉전기까지 이싼 북부 역사를 잘 정리한 박물관.',a:'Pho Si Rd',pid:'ChIJPy7AJBOdIzER8b-pIzBsNY8'},
+ {n:'농프라짝 공원',c:'sight',lat:17.41921,lng:102.78039,r:4.5,rc:7474,tip:'호수 둘레 산책·자전거 코스. 저녁 무렵 현지인들과 함께 러닝하기 좋은 곳.',a:'Ban Lueam',pid:'ChIJd7JhQWudIzERrQoe5K6cdeg'},
+ {n:'락므앙 사당 (시티 필라)',c:'sight',lat:17.41341,lng:102.78764,r:4.7,rc:1354,tip:'우돈타니의 수호 사당. 주말 저녁엔 바로 옆 대형 야시장과 함께 둘러보기 좋다.',a:'Mak Khaeng',pid:'ChIJrStJBmydIzERmt8pPMpSZlw'},
+ {n:'호텔 모코 (MOCO)',c:'stay',lat:17.4025718,lng:102.8043998,r:4.6,rc:355,tip:'신축 디자인 호텔. 맛집 밀집 지역 한가운데, 객실 컨디션과 샤워 수압 호평.',a:'Thongyai Rd',pid:'ChIJ0TeebNidIzER1lhrjb3mOCI'},
+ {n:'센타라 우돈',c:'stay',lat:17.4065879,lng:102.8005834,r:4.4,rc:2679,tip:'센트럴 플라자 도보 100m. 반려동물 동반 가능, 버스터미널 인접.',a:'Central Plaza 인근',pid:'ChIJ10hy6W6dIzERhZnO7a2fa6o'},
+ {n:'더 빤나라이 호텔',c:'stay',lat:17.4061119,lng:102.8021357,r:4.3,rc:990,tip:'야시장·센트럴 인근. 수영장과 조식 평이 좋고 직원 친절도 높음.',a:'Sampanthamit Rd',pid:'ChIJBSjo0HydIzERXufN1NoXlFE'}
+]},
+{id:'brm',name:'부리람',center:[14.85,103.05],zoom:10,places:[
+ {n:'슬란차 바 & 레스토랑',c:'food',lat:14.99582,lng:103.09682,r:4.8,rc:108,tip:'버스터미널 옆 홈메이드 피자·버거집. 태국식·서양식 모두 가능, 친절한 자매 사장님.',a:'Nai Mueang',pid:'ChIJrw0GMn-VGTERFyIP7ssvkqU'},
+ {n:'반차이남 레스토랑',c:'food',lat:14.98985,lng:103.11958,r:4.2,rc:686,tip:'강변 라이브음악 대형 레스토랑. 이싼식 요리와 세 가지 맛 생선이 대표 메뉴.',a:'Isan, 창아레나 7km',pid:'ChIJ0_-snqWVGTERit6-FkqMikw'},
+ {n:'런던 스테이크 부리람',c:'food',lat:14.99828,lng:103.10235,r:4.3,rc:495,tip:'푸짐한 립과 스테이크의 양식당. 아침 7시 반부터 영업해 조식으로도 활용 가능.',a:'Thani Rd',pid:'ChIJhYqeb8GVGTERMg3YGSxI3bw'},
+ {n:'스피드 1 뮤직홀',c:'night',lat:15.00026,lng:103.10817,r:4.2,rc:497,tip:'부리람 최대 로컬 나이트클럽 겸 라이브홀. 태국 밴드·힙합·EDM, 주류 가격 저렴. 새벽 2시까지.',a:'Romburi Rd',pid:'ChIJSafvLL6VGTERf2er2ry2Fes'},
+ {n:'GP 바 & 레스토랑',c:'night',lat:15.00281,lng:103.11163,r:4.4,rc:55,tip:'현지 거주 외국인들의 아지트 로컬 바. 포켓볼 테이블과 서양식·타이 음식, 편한 분위기.',a:'Nahsathani Rd',pid:'ChIJzziTHgCVGTERtSluGlPL4HY'},
+ {n:'릴리프 스파 & 마사지',c:'spa',lat:15.00216,lng:103.11049,r:4.4,rc:19,tip:'시내 중심의 무난한 로컬 스파. 2시간 타이 마사지 코스가 인기.',a:'Nivas Rd',pid:'ChIJOVs3v26VGTERN8YlFj5qGoM'},
+ {n:'부리람 마사지',c:'spa',lat:14.99448,lng:103.09964,r:4.7,rc:56,tip:'통증 케어에 강한 테라피형 마사지. 목·어깨 집중 관리로 단골 많은 곳.',a:'Soi Sean Suk 3',pid:'ChIJ2aJj1WGVGTERjuOnZdi-wFI'},
+ {n:'릴리 헤어 스파 & 마사지',c:'spa',lat:14.98894,lng:103.10461,r:4.8,rc:52,tip:'정원 속 부티크 스파. 마사지와 헤어 케어를 한 번에, 분위기 좋다는 평.',a:'Jiranakon 1',pid:'ChIJV5dZsqWVGTERtuSvzqW1zcA'},
+ {n:'파놈룽 역사공원',c:'sight',lat:14.53194,lng:102.94033,r:4.7,rc:12045,tip:'사화산 정상의 크메르 유적. "관광객 없는 앙코르와트"라 불리는 이싼 최고 명소.',a:'Chaloem Phra Kiat',pid:'ChIJwUarGdjUGzERDU7siFlH-50'},
+ {n:'모데나 바이 프레이저 부리람',c:'stay',lat:14.9632083,lng:103.0934991,r:4.6,rc:609,tip:'창 아레나·서킷 인접 모던 호텔. 대형 수영장과 스팀룸, 침구 만족도 높음.',a:'Tambon Samet',pid:'ChIJzz-_JSSUGTERGwq-AJchfDA'},
+ {n:'아마리 부리람 유나이티드',c:'stay',lat:14.9675458,lng:103.0935118,r:4.5,rc:683,tip:'창 아레나 도보권. 축구·모터스포츠 관람객에게 최적, 레스토랑 평 좋음.',a:'Buriram-Prakonchai Rd',pid:'ChIJ2z58ezCUGTERd1vEjvJySDw'},
+ {n:'크레스코 호텔 부리람',c:'stay',lat:14.9716553,lng:103.105454,r:4.5,rc:656,tip:'창 인터내셔널 서킷 근처 신축. 넓은 객실과 야외 수영장, 주차 공간 넉넉.',a:'Isan, Muang Buriram',pid:'ChIJfcte40mUGTERhcUPW6lA6Fc'}
+]}
+];
+
+// ---------- 관리자 등록 데이터 병합 ----------
+let BOOKINGS={}, HIDDEN=[];
+async function loadAdminPlaces(){
+  let admins=[], hidden=[], bookings={};
+  try{
+    admins=await TL.getSetting('map_places',[]);
+    hidden=await TL.getSetting('map_hidden',[]);
+    bookings=await TL.getSetting('map_bookings',{});
+  }catch(e){ console.warn('서버 데이터 로드 실패, 내장 데이터만 표시', e); }
+  BOOKINGS=bookings||{};
+  (admins||[]).forEach(p=>{
+    const rg=DATA.find(r=>r.id===p.region);
+    if(rg && !rg.places.some(x=>x.n===p.n)){
+      rg.places.push({n:p.n,c:p.c,lat:p.lat,lng:p.lng,r:p.r||0,rc:p.rc||0,
+        tip:p.tip||'',a:p.a||'',pid:p.pid||'',q:p.q||'',
+        z:p.z||zoneOf(p.region,p.lat,p.lng),admin:true,bk:p.bk||null});
+    }
+  });
+  HIDDEN=hidden||[];
+  DATA.forEach(rg=>{ rg.places=rg.places.filter(p=>!HIDDEN.includes(rg.id+'|'+p.n)); });
+}
+
+function getBk(p){ return p.bk || BOOKINGS[curRegion.id+'|'+p.n] || null; }
+
+// QR 모달
+function openQR(name,label,img,link){
+  const m=document.getElementById('qrModal');
+  document.getElementById('qrTitle').textContent=name;
+  document.getElementById('qrImg').src=img;
+  document.getElementById('qrGo').href=link;
+  document.getElementById('qrGo').textContent=label+' 바로가기 →';
+  m.classList.add('on');
+}
+function closeQR(){ document.getElementById('qrModal').classList.remove('on'); }
+
+// ---------- state ----------
+let curRegion=DATA[0], curCat='all', markers=[];
+const map=L.map('map',{zoomControl:true,scrollWheelZoom:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap &copy; CARTO'
+}).addTo(map);
+
+// region chips
+const regionRow=document.getElementById('regionRow');
+DATA.forEach((rg,i)=>{
+  const b=document.createElement('button');
+  b.className='chip'+(i===0?' on':'');
+  b.innerHTML=rg.name+'<span class="cnt">'+rg.places.length+'</span>';
+  b.onclick=()=>{
+    curRegion=rg; curCat='all'; curZone='all';
+    regionRow.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    renderCats(); renderZones(); render(true);
+  };
+  regionRow.appendChild(b);
+});
+
+// 하부 카테고리 카드 렌더링
+let curZone='all';
+function renderZones(){
+  const el=document.getElementById('zoneRow');
+  const zs=ZONES[curRegion.id];
+  if(!zs){ el.innerHTML=''; return; }
+  // 현재 카테고리 기준으로 구역별 개수
+  const base=curRegion.places.filter(p=>curCat==='all'||p.c===curCat);
+  const cnt=k=>k==='all'?base.length:base.filter(p=>(p.z||'etc')===k).length;
+  const list=[['all','전체 지역']].concat(zs).concat([['etc','기타 지역']]);
+  el.innerHTML=list.map(([k,lb])=>{
+    const n=cnt(k);
+    if(k!=='all'&&n===0) return '';
+    return '<button class="zchip'+(curZone===k?' on':'')+'" onclick="pickZone(\''+k+'\')">'+lb+'<span class="zn">'+n+'</span></button>';
+  }).join('');
+}
+function pickZone(k){ curZone=k; renderZones(); render(false); }
+
+function renderCats(){
+  document.getElementById('regionTitle').textContent=curRegion.name;
+  document.getElementById('regionSub').textContent='총 '+curRegion.places.length+'곳 · 카테고리를 선택하세요';
+  const g=document.getElementById('catGrid');
+  g.innerHTML=CATS.map(c=>{
+    const n=c.k==='all'?curRegion.places.length:curRegion.places.filter(p=>p.c===c.k).length;
+    if(c.k!=='all'&&n===0) return '';
+    return '<div class="catcard'+(curCat===c.k?' on':'')+'" data-cat="'+c.k+'" onclick="pickCat(\''+c.k+'\')">'+
+      '<span class="ic">'+c.ic+'</span><span class="lb">'+c.lb+'<span class="n">'+n+'곳</span></span></div>';
+  }).join('');
+}
+function pickCat(k){ curCat=k; curZone='all'; renderCats(); renderZones(); render(false); }
+
+function gmapUrl(p){
+  // 1순위: 구글 place_id (가장 정확)
+  if(p.pid) return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.n)+'&query_place_id='+p.pid;
+  // 2순위: 검색어(원어명) + 좌표 → 좌표 주변에서 이름으로 검색되어 정확히 매칭
+  const q=(p.q||'').trim();
+  if(q) return 'https://www.google.com/maps/search/'+encodeURIComponent(q)+'/@'+p.lat+','+p.lng+',18z';
+  // 3순위: 한글명이 아닌 경우에만 이름 검색, 그 외 좌표 핀
+  return 'https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng;
+}
+function markerIcon(cat){
+  return L.divIcon({className:'',html:'<div class="mk" style="background:'+CAT_COLOR[cat]+'"><span>'+CAT_ICON[cat]+'</span></div>',
+    iconSize:[26,26],iconAnchor:[13,24],popupAnchor:[0,-22]});
+}
+
+function render(flyTo){
+  markers.forEach(m=>map.removeLayer(m)); markers=[];
+  const list=curRegion.places
+    .filter(p=>(curCat==='all'||p.c===curCat) && (curZone==='all'||(p.z||'etc')===curZone))
+    .slice().sort((a,b)=>(b.r||0)-(a.r||0));
+
+  const zl=(ZONES[curRegion.id]||[]).concat([['etc','기타 지역']]).find(x=>x[0]===curZone);
+  document.getElementById('listTitle').textContent=CAT_FULL[curCat]+(zl?' · '+zl[1]:'');
+  document.getElementById('listCount').textContent=list.length+'곳';
+
+  const cards=document.getElementById('cards'); cards.innerHTML='';
+  const bounds=[];
+  list.forEach((p,idx)=>{
+    const mk=L.marker([p.lat,p.lng],{icon:markerIcon(p.c)}).addTo(map);
+    const bk=getBk(p);
+    const bkPop=bk?'<a class="pp-link" target="_blank" rel="noopener" href="'+bk.link+'" style="color:#6fe0b4">📅 '+bk.label+'</a><br>':'';
+    mk.bindPopup('<div class="pp-name">'+p.n+'</div><div class="pp-meta">★ '+p.r.toFixed(1)+' · 리뷰 '+p.rc.toLocaleString()+'</div>'+bkPop+'<a class="pp-link" target="_blank" rel="noopener" href="'+gmapUrl(p)+'">구글맵에서 열기 →</a>');
+    markers.push(mk); bounds.push([p.lat,p.lng]);
+
+    let bkHtml='';
+    if(bk){
+      bkHtml='<div class="bkrow">';
+      if(bk.img){
+        bkHtml+='<img class="bkqr" src="'+bk.img+'" alt="QR" title="클릭하면 연결됩니다" '+
+          'onclick="event.stopPropagation();openQR(\''+p.n.replace(/'/g,"\\'")+'\',\''+bk.label.replace(/'/g,"\\'")+'\',\''+bk.img+'\',\''+bk.link+'\')">';
+      }
+      bkHtml+='<a class="bkbtn" target="_blank" rel="noopener" href="'+bk.link+'" onclick="event.stopPropagation()">📅 '+bk.label+'</a></div>';
+    }
+
+    const card=document.createElement('div');
+    card.className='card '+p.c;
+    card.innerHTML=
+      '<div class="card-top"><div class="card-name">'+p.n+'</div><span class="badge '+p.c+'">'+CAT_LABEL[p.c]+'</span></div>'+
+      '<div class="stars">★ '+p.r.toFixed(1)+' <small>· 리뷰 '+p.rc.toLocaleString()+'개</small></div>'+
+      '<div class="tip">'+p.tip+'</div>'+
+      (p.a?'<div class="addr">📍 '+p.a+'</div>':'')+
+      bkHtml+
+      '<a class="gmap" target="_blank" rel="noopener" href="'+gmapUrl(p)+'" onclick="event.stopPropagation()">구글맵에서 열기 →</a>';
+    card.onclick=()=>{map.flyTo([p.lat,p.lng],15,{duration:.7}); mk.openPopup();
+      document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'});};
+    cards.appendChild(card);
+  });
+
+  if(flyTo||bounds.length===0){ map.setView(curRegion.center,curRegion.zoom); }
+  else if(bounds.length){ map.fitBounds(bounds,{padding:[36,36],maxZoom:14}); }
+}
+// iframe 안에서 열렸으면 컴팩트 모드
+if(window.self!==window.top) document.body.classList.add('embed');
+(async function(){
+  await loadAdminPlaces();
+  renderCats();
+  renderZones();
+  render(true);
+  // 동기화 상태 표시
+  const el=document.getElementById('syncInfo');
+  if(el){
+    const total=DATA.reduce((s,r)=>s+r.places.length,0);
+    let adminN=0;
+    try{ adminN=(await TL.getSetting('map_places',[])).length; }catch(e){}
+    el.innerHTML='표시 중 <b style="color:var(--gold)">'+total+'곳</b>'+
+      (adminN?' · 관리자 등록 '+adminN+'곳 포함':'')+
+      (HIDDEN.length?' · 숨김 '+HIDDEN.length+'곳 제외':'');
+  }
+})();
+setTimeout(()=>map.invalidateSize(),300);
+window.addEventListener('resize',()=>map.invalidateSize());
+</script>
+</body>
+</html>
