@@ -307,7 +307,7 @@ body{background:
 
 <footer>
   타이라이프 — 태국 여행·생활 커뮤니티. 게시물은 작성자에게 책임이 있으며, 업소 이용 시 가격·안전에 유의하세요.
-  <a href="./thailand-travel-map.html">🗺 태국 지도 바로가기</a> · <a href="./thailand-map-admin.html">관리자</a>
+  <a href="./index.html">🗺 태국 지도 바로가기</a> · <a href="./admin.html">관리자</a>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -659,8 +659,8 @@ function renderMap(){
   '<div style="display:flex;align-items:center;gap:9px;padding:2px 4px 9px;flex-wrap:wrap">'+
   '<b style="font-size:15px">🗺 태국 지도</b>'+
   '<small style="color:var(--sub);font-size:11.5px">지역별 찾아보기</small>'+
-  '<a href="./thailand-travel-map.html" target="_blank" rel="noopener" style="margin-left:auto;font-size:11.5px;font-weight:800;text-decoration:none">전체화면 ↗</a></div>'+
-  '<iframe src="./thailand-travel-map.html?t='+Date.now()+'" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
+  '<a href="./index.html" target="_blank" rel="noopener" style="margin-left:auto;font-size:11.5px;font-weight:800;text-decoration:none">전체화면 ↗</a></div>'+
+  '<iframe src="./index.html?t='+Date.now()+'" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
   '</div>';
 }
 $('nav').innerHTML=PAGES.map(p=>'<button class="nbtn" data-id="'+p.id+'" onclick="go(\''+p.id+'\')">'+p.lb+'</button>').join('');
@@ -794,7 +794,7 @@ async function renderFood(){
   '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🍜 맛집 추천</h2><small>직접 가본 곳만 추천해주세요</small></div>'+
   '<div class="chiprow">'+['all',...REGIONS].map(r=>'<button class="chip'+(foodRegion===r?' on':'')+'" onclick="foodRegion=\''+r+'\';renderFood()">'+(r==='all'?'전지역':r)+'</button>').join('')+'</div>'+
   '<button class="btn btn-gold" onclick="foodForm()">＋ 맛집 추천하기</button>'+
-  '<a class="btn btn-line" style="text-decoration:none;margin-left:8px" href="./thailand-travel-map.html">🗺 지도에서 맛집 보기</a>'+
+  '<a class="btn btn-line" style="text-decoration:none;margin-left:8px" href="./index.html">🗺 지도에서 맛집 보기</a>'+
   '<div id="foodFormBox"></div></div>'+
   (list.length?list.map(p=>
     '<div class="post" style="border-left-color:var(--c-food)">'+
