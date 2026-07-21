@@ -158,6 +158,7 @@ body{background:
     <div class="eyebrow" style="color:var(--gold);font-size:11px;letter-spacing:.26em;font-weight:700">THAI MAP ADMIN</div>
     <h2 style="margin-top:8px">관리자 로그인</h2>
     <p>등록된 관리자 비밀번호를 입력하세요.<br>기본값: <b style="color:var(--gold)">admin1234</b></p>
+    <input id="gateEmail" type="email" placeholder="관리자 이메일" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit">
     <input type="password" id="pw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')login()">
     <div style="margin-top:12px"><button class="btn btn-gold" style="width:100%" onclick="login()">로그인</button></div>
     <div id="pwerr" style="color:var(--red);font-size:12px;margin-top:10px;min-height:16px"></div>
@@ -466,10 +467,12 @@ body{background:
 <script src="./config.js"></script>
 <script src="./tl-api.js"></script>
 <script>
-/* ===== 서버 모드 ===== */
-const _cache = {};
-function cS(k, d) { return _cache[k] !== undefined ? _cache[k] : d; }
-function cSS(k, v) { _cache[k] = v; }
+let PLACES=[], HIDDEN=[], BOOKINGS={};
+const _cache={};
+function cS(k,d){ return _cache[k]!==undefined?_cache[k]:d; }
+async function pushSetting(k,v){ try{ await TL.setSetting(k,v); }catch(e){ alert('저장 실패: '+e.message); } }
+async function svSupport(o){ await pushSetting('support',o); }
+async function svBanned(l){ await pushSetting('banned',l); }
 
 const ZONE_GEO={
  bkk:[['sukhumvit','수쿰빗·프롬퐁',13.7300,100.5690,2.2],
@@ -556,7 +559,7 @@ const BK_ICON={line:'💬',kakao:'💛',whatsapp:'📱',tel:'📞',url:'🔗'};
 
 function loadBk(){ return BOOKINGS||{}; }
 function saveBk(d){ BOOKINGS=d; pushSetting('map_bookings',d); }
-function loadContact(){ return (_cache.tl_support&&_cache.tl_support.defaultContact)||null; }
+function loadContact(){ return (_cache.tl_support||{}).defaultContact||null; }
 
 function normLink(type,v){
   v=(v||'').trim(); if(!v) return '';
@@ -574,7 +577,7 @@ function openDefaultContact(){
   if(link===null) return;
   const label=prompt('버튼 문구',c.label||'예약 문의')||'예약 문의';
   const img=prompt('QR 이미지 URL (없으면 비워두세요)',c.img||'')||'';
-  (function(v){ const s=_cache.tl_support||{}; s.defaultContact=v; cSS('tl_support',s); svSupport(s); })({type:type.trim(),link:link.trim(),label,img});
+  (function(v){const s=_cache.tl_support||{};s.defaultContact=v;cSS('tl_support',s);svSupport(s);})({type:type.trim(),link:link.trim(),label,img});
   toast('기본 연락처가 저장되었습니다');
 }
 function applyDefaultContact(){
@@ -692,6 +695,8 @@ function delBk(k){ const d=loadBk(); delete d[k]; saveBk(d); renderBkList(); loa
 /* ===== 커뮤니티 관리 ===== */
 const CKEYS={meet:'tl_meet',news:'tl_news',food:'tl_food',partner:'tl_partner',gallery:'tl_gallery'};
 const CLB={meet:'정모·번개',news:'태국뉴스',food:'맛집추천',partner:'제휴업체',gallery:'갤러리'};
+
+
 function esc2(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function ago(ts){ if(!ts) return '-'; const d=Date.now()-ts;
   if(d<60000) return '방금'; if(d<3600000) return Math.floor(d/60000)+'분 전';
@@ -701,7 +706,7 @@ const LEVELS={1:['🌱','새싹'],2:['✈️','여행자'],3:['⭐','단골'],4:
 function membersA(){ return cS('tl_members',{}); }
 function setLevel(n,lv){
   const m=membersA(); if(!m[n]) return;
-  m[n].level=parseInt(lv)||1; svLevel(n,m[n].level);
+  m[n].level=parseInt(lv)||1; saveMembersA(m);
   toast(n+' 님 레벨: '+LEVELS[m[n].level][0]+' Lv'+m[n].level+' '+LEVELS[m[n].level][1]);
 }
 function saveMembersA(m){ cSS('tl_members',m); }
@@ -1287,7 +1292,7 @@ function saveSupport(){
     else if(urlV==='' && !_qrTmp[key] && document.getElementById(key+'Prev').innerHTML==='미리보기') sp[key+'Img']='';
   });
   sp.hours=document.getElementById('spHours').value.trim();
-  cSS('tl_support',sp); svSupport(sp);
+  cSS('tl_support',sp);
   toast('고객센터 설정이 저장되었습니다 🎧');
 }
 
@@ -1346,7 +1351,8 @@ function sendAdminChat(){
   const ta=document.getElementById('noticeIn'), txt=ta.value.trim();
   if(!txt){ alert('내용을 입력해주세요.'); return; }
   const a=cS('tl_chat',[]);
-  svAdminChat(txt).then(()=>bootAdmin());
+  a.push({n:'관리자',t:txt,ts:Date.now(),admin:true});
+  cSS('tl_chat',a.slice(-200));
   ta.value='';
   toast('관리자 채팅으로 전송되었습니다 👑');
   refreshChatList();
@@ -1355,7 +1361,8 @@ function sendNotice(){
   const ta=document.getElementById('noticeIn'), txt=ta.value.trim();
   if(!txt){ alert('공지 내용을 입력해주세요.'); return; }
   const a=cS('tl_chat',[]);
-  svNotice(txt).then(()=>bootAdmin());
+  a.push({n:'관리자',t:txt,ts:Date.now(),notice:true});
+  cSS('tl_chat',a.slice(-200));
   ta.value='';
   toast('공지가 채팅방에 배포되었습니다 📢');
   refreshChatList();
@@ -1398,10 +1405,10 @@ function addBanned(){
   if(w.length>30){ alert('30자 이하로 입력해주세요.'); return; }
   const a=bannedA();
   if(a.includes(w)){ alert('이미 등록된 단어입니다.'); return; }
-  a.push(w); svBanned(a); toast('금지단어가 추가되었습니다'); renderChatAdmin();
+  a.push(w); saveBannedA(a); toast('금지단어가 추가되었습니다'); renderChatAdmin();
 }
 function delBanned(i){
-  const a=bannedA(); a.splice(i,1); svBanned(a); toast('삭제되었습니다'); renderChatAdmin();
+  const a=bannedA(); a.splice(i,1); saveBannedA(a); toast('삭제되었습니다'); renderChatAdmin();
 }
 function delUserChat(){
   const n=document.getElementById('chatUserSel').value;
@@ -1419,76 +1426,673 @@ function clearChat(){
   cSS('tl_chat',[]); toast('채팅을 비웠습니다'); renderChatAdmin();
 }
 
-
-let PLACES=[], HIDDEN=[], BOOKINGS={};
-/* ===== 서버 저장 브릿지 ===== */
-async function pushSetting(key,val){ try{ await TL.setSetting(key,val); }catch(e){ alert('저장 실패: '+e.message); } }
-async function pushMapData(){ await pushSetting('map_places',PLACES); await pushSetting('map_hidden',HIDDEN); await pushSetting('map_bookings',BOOKINGS); }
-async function svLevel(nick,lv){ await TL.setLevel(nick,lv); }
-async function svBlock(nick,b){ await TL.setBlocked(nick,b); }
-async function svBanned(list){ await pushSetting('banned',list); }
-async function svSupport(obj){ await pushSetting('support',obj); }
-async function svNotice(txt){ await TL.chatSend(txt,{notice:true}); }
-async function svAdminChat(txt){ await TL.chatSend(txt,{isAdmin:true}); }
-async function svCoupon(nick,o){ await TL.couponSend(nick,o); }
-async function svNotif(t,i,ti,b){ await TL.notifSend(t,i,ti,b); }
-async function svPostAdd(board,obj){ await TL.postAdd(board,{...obj,_asAdmin:true}); }
-async function svPostUpd(id,patch){ await TL.postUpdate(id,patch); }
-async function svPostDel(id){ await TL.postDelete(id); }
-async function svChatDel(id){ await TL.chatDelete(id); }
-async function svReplyDel(id){ await TL.replyDelete(id); }
-
-/* ===== 관리자 로그인 (Supabase) ===== */
-async function tryLogin(){
-  const email=document.getElementById('gateEmail').value.trim();
-  const pw=document.getElementById('gatePw').value;
-  const err=document.getElementById('gateErr');
-  err.textContent='로그인 중…';
+/* ===== 로그인 ===== */
+function getPw(){ return ''; }
+async function login(){
+  const email=(document.getElementById('gateEmail')||{}).value||'';
+  const pw=document.getElementById('pw').value;
+  const err=document.getElementById('gateErr')||document.getElementById('err');
+  if(err) err.textContent='로그인 중…';
   try{
-    await TL.signIn(email,pw);
-    if(!TL.isAdmin()){
-      await TL.signOut();
-      err.textContent='관리자 권한이 없는 계정입니다.';
-      return;
-    }
+    await TL.signIn(email.trim(),pw);
+    if(!TL.isAdmin()){ await TL.signOut(); if(err) err.textContent='관리자 권한이 없는 계정입니다.'; return; }
     document.getElementById('gate').style.display='none';
     await bootAdmin();
-  }catch(e){ err.textContent=e.message; }
+  }catch(e){ if(err) err.textContent=e.message; }
 }
 async function bootAdmin(){
-  _cache.tl_members={};
   const ms=await TL.members();
-  ms.forEach(m=>{ _cache.tl_members[m.nick]={ level:m.level, blocked:m.blocked,
-    posts:m.posts, chats:m.chats, logins:m.logins, name:m.name, phone:m.phone,
-    joined:new Date(m.created_at).getTime(), lastSeen:new Date(m.last_seen).getTime() }; });
-  _cache.tl_users={}; ms.forEach(m=>{ _cache.tl_users[m.nick]={name:m.name,phone:m.phone,email:'',joined:new Date(m.created_at).getTime()}; });
+  _cache.tl_members={}; _cache.tl_users={};
+  ms.forEach(m=>{
+    _cache.tl_members[m.nick]={level:m.level,blocked:m.blocked,posts:m.posts,chats:m.chats,
+      logins:m.logins,joined:new Date(m.created_at).getTime(),lastSeen:new Date(m.last_seen).getTime(),regions:{}};
+    _cache.tl_users[m.nick]={name:m.name,phone:m.phone,email:'',joined:new Date(m.created_at).getTime()};
+  });
   _cache.tl_banned=await TL.getSetting('banned',[]);
   _cache.tl_support=await TL.getSetting('support',{});
   for(const b of ['meet','news','food','partner','gallery']){
-    _cache['tl_'+b]=(await TL.posts(b)).map(p=>({
-      id:p.id, ts:new Date(p.created_at).getTime(), title:p.title, name:p.title, cap:p.title,
-      body:p.body, desc:p.body, author:p.author, region:p.region, cat:p.cat, kind:p.kind,
-      date:p.date, time:p.time, place:p.place, price:p.price, link:p.link, map:p.map,
-      img:p.img, benefit:p.benefit, soon:p.soon, joiners:p.joiners||[] }));
+    _cache['tl_'+b]=(await TL.posts(b)).map(p=>({id:p.id,ts:new Date(p.created_at).getTime(),
+      title:p.title,name:p.title,cap:p.title,body:p.body,desc:p.body,author:p.author,
+      region:p.region,cat:p.cat,kind:p.kind,date:p.date,time:p.time,place:p.place,
+      price:p.price,link:p.link,map:p.map,img:p.img,benefit:p.benefit,soon:p.soon,joiners:p.joiners||[]}));
   }
-  const chats=await TL.chatList(200);
-  _cache.tl_chat=chats.map(c=>({id:c.id, n:c.nick, t:c.text, ts:new Date(c.created_at).getTime(),
-    notice:c.notice, admin:c.is_admin,
+  const ch=await TL.chatList(200);
+  _cache.tl_chat=ch.map(c=>({id:c.id,n:c.nick,t:c.text,ts:new Date(c.created_at).getTime(),
+    notice:c.notice,admin:c.is_admin,
     replies:(c.replies||[]).map(r=>({id:r.id,n:r.nick,t:r.text,ts:new Date(r.created_at).getTime()}))}));
   const nt=await TL.notifs();
   _cache.tl_notifs={'@admin':nt.filter(x=>x.target==='@admin').map(x=>({ts:new Date(x.created_at).getTime(),icon:x.icon,title:x.title,body:x.body}))};
   PLACES=await TL.getSetting('map_places',[]);
   HIDDEN=await TL.getSetting('map_hidden',[]);
   BOOKINGS=await TL.getSetting('map_bookings',{});
-  initMap(); renderTabs(); renderList();
+  init();
 }
-(async function(){
-  await TL.init();
-  if(TL.isAdmin()){
-    document.getElementById('gate').style.display='none';
-    await bootAdmin();
+function changePw(){
+  const cur=prompt('현재 비밀번호를 입력하세요'); if(cur===null) return;
+  if(cur!==getPw()){ alert('현재 비밀번호가 일치하지 않습니다.'); return; }
+  const np=prompt('새 비밀번호를 입력하세요 (4자 이상)'); if(!np) return;
+  if(np.length<4){ alert('4자 이상 입력해주세요.'); return; }
+   toast('비밀번호가 변경되었습니다');
+}
+(async function(){ await TL.init(); if(TL.isAdmin()){ document.getElementById('gate').style.display='none'; await bootAdmin(); } })();
+
+/* ===== 데이터 ===== */
+function load(){ return PLACES||[]; }
+function save(d){ PLACES=d; pushSetting('map_places',d); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2000); }
+
+let editId=null, curTab='all', pickmap, pin;
+
+function init(){
+  const sel=document.getElementById('fRegion');
+  if(!sel.options.length) REGIONS.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
+  sel.onchange=()=>{const r=REGIONS.find(x=>x.id===sel.value); pickmap.setView(r.center,r.zoom);};
+
+  const bsel=document.getElementById('bRegion');
+  if(!bsel.options.length) REGIONS.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.name;bsel.appendChild(o);});
+
+  if(!pickmap){
+    pickmap=L.map('pickmap',{zoomControl:true}).setView(REGIONS[0].center,REGIONS[0].zoom);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OSM &copy; CARTO'}).addTo(pickmap);
+    pickmap.on('click',e=>{
+      document.getElementById('fLat').value=e.latlng.lat.toFixed(6);
+      document.getElementById('fLng').value=e.latlng.lng.toFixed(6);
+      syncPin();
+    });
   }
+  setTimeout(()=>pickmap.invalidateSize(),250);
+  renderTabs(); renderList();
+}
+
+function syncPin(){
+  const la=parseFloat(document.getElementById('fLat').value), ln=parseFloat(document.getElementById('fLng').value);
+  if(isNaN(la)||isNaN(ln)) return;
+  const cat=document.getElementById('fCat').value;
+  const icon=L.divIcon({className:'',html:'<div class="mk" style="background:'+CAT_COLOR[cat]+'"><span>'+CAT_ICON[cat]+'</span></div>',iconSize:[24,24],iconAnchor:[12,22]});
+  if(pin) pickmap.removeLayer(pin);
+  pin=L.marker([la,ln],{icon}).addTo(pickmap);
+}
+document.getElementById('fCat').addEventListener('change',syncPin);
+
+function parsePid(v){
+  if(!v) return '';
+  v=v.trim();
+  const m=v.match(/query_place_id=([A-Za-z0-9_\-]+)/)||v.match(/place_id[=:]([A-Za-z0-9_\-]+)/)||v.match(/!1s(0x[0-9a-f:]+)/);
+  return m?m[1]:v;
+}
+
+function savePlace(){
+  const name=document.getElementById('fName').value.trim();
+  const la=parseFloat(document.getElementById('fLat').value), ln=parseFloat(document.getElementById('fLng').value);
+  if(!name){ alert('장소 이름을 입력해주세요.'); return; }
+  if(isNaN(la)||isNaN(ln)){ alert('지도를 클릭해 위치를 지정해주세요.'); return; }
+
+  const obj={
+    id: editId||('a'+Date.now()),
+    region: document.getElementById('fRegion').value,
+    c: document.getElementById('fCat').value,
+    n: name + (document.getElementById('fNew').checked?' 🆕':''),
+    lat: la, lng: ln,
+    r: parseFloat(document.getElementById('fRating').value)||0,
+    rc: parseInt(document.getElementById('fCount').value)||0,
+    a: document.getElementById('fAddr').value.trim(),
+    tip: document.getElementById('fTip').value.trim(),
+    pid: parsePid(document.getElementById('fPid').value),
+    z: zoneOf(document.getElementById('fRegion').value, la, ln),
+    admin: true,
+    ts: Date.now()
+  };
+  // 예약 연결
+  if(document.getElementById('fBkOn').checked){
+    const raw=document.getElementById('fBkLink').value.trim();
+    if(!raw){ alert('예약 연결 링크를 입력하거나 "사용"을 꺼주세요.'); return; }
+    const type=document.getElementById('fBkType').value;
+    obj.bk={type,rawLink:raw,link:normLink(type,raw),
+      label:document.getElementById('fBkLabel').value.trim()||'예약 문의',
+      img:document.getElementById('fBkImg').value.trim()};
+  }
+  const d=load();
+  if(editId){ const i=d.findIndex(x=>x.id===editId); if(i>=0) d[i]=obj; toast('수정되었습니다'); }
+  else { d.push(obj); toast('등록되었습니다'); }
+  save(d); resetForm(); renderTabs(); renderList();
+}
+
+function resetForm(){
+  editId=null;
+  ['fName','fRating','fCount','fAddr','fTip','fPid','fLat','fLng','fBkLink','fBkImg','fBkLabel'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fNew').checked=false;
+  document.getElementById('fBkOn').checked=false;
+  document.getElementById('bkFields').style.display='none';
+  document.getElementById('qrPrev').innerHTML='미리보기';
+  document.getElementById('formTitle').textContent='새 장소 등록';
+  document.getElementById('saveBtn').textContent='등록하기';
+  if(pin){ pickmap.removeLayer(pin); pin=null; }
+}
+
+function editPlace(id){
+  const p=load().find(x=>x.id===id); if(!p) return;
+  setMode('new');
+  editId=id;
+  document.getElementById('fRegion').value=p.region;
+  document.getElementById('fCat').value=p.c;
+  document.getElementById('fName').value=p.n.replace(' 🆕','');
+  document.getElementById('fNew').checked=p.n.includes('🆕');
+  document.getElementById('fRating').value=p.r||'';
+  document.getElementById('fCount').value=p.rc||'';
+  document.getElementById('fAddr').value=p.a||'';
+  document.getElementById('fTip').value=p.tip||'';
+  document.getElementById('fPid').value=p.pid||'';
+  document.getElementById('fLat').value=p.lat; document.getElementById('fLng').value=p.lng;
+  // 예약 정보
+  document.getElementById('fBkOn').checked=!!p.bk;
+  document.getElementById('bkFields').style.display=p.bk?'block':'none';
+  document.getElementById('fBkType').value=p.bk?p.bk.type:'line';
+  document.getElementById('fBkLink').value=p.bk?(p.bk.rawLink||p.bk.link):'';
+  document.getElementById('fBkLabel').value=p.bk?p.bk.label:'';
+  document.getElementById('fBkImg').value=p.bk?(p.bk.img||''):'';
+  previewQR();
+  document.getElementById('formTitle').textContent='장소 수정';
+  document.getElementById('saveBtn').textContent='수정 저장';
+  pickmap.setView([p.lat,p.lng],15); syncPin();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function delPlace(id){
+  if(!confirm('이 장소를 삭제할까요?')) return;
+  save(load().filter(x=>x.id!==id)); toast('삭제되었습니다'); renderTabs(); renderList();
+}
+
+let curView='all';
+function setView(v){
+  curView=v;
+  ['All','Mine','Hidden'].forEach(x=>document.getElementById('v'+x).classList.remove('on'));
+  document.getElementById('v'+v.charAt(0).toUpperCase()+v.slice(1)).classList.add('on');
+  renderTabs(); renderList();
+}
+
+/* 지역의 전체 장소(내장+직접등록) 통합 목록 */
+function allPlaces(rid){
+  const admins=load().filter(p=>p.region===rid);
+  const base=(BASE[rid]||[]).map(([n,c])=>({n,c,region:rid,base:true}));
+  return base.concat(admins.map(p=>({...p,base:false})));
+}
+let curCat='all';
+function viewFiltered(rid,ignoreCat){
+  let a=allPlaces(rid);
+  if(curView==='mine') a=a.filter(p=>!p.base);
+  else if(curView==='hidden') a=a.filter(p=>isHidden(rid,p.n));
+  else a=a.filter(p=>!isHidden(rid,p.n));
+  if(!ignoreCat && curCat!=='all') a=a.filter(p=>p.c===curCat);
+  return a;
+}
+function pickCat(c){ curCat=c; checked.clear(); renderTabs(); renderList(); }
+
+function renderTabs(){
+  const t=document.getElementById('tabs');
+  // 지역 탭: 카테고리 필터와 무관하게 지역 전체 개수 표시
+  const cntAll=rid=>viewFiltered(rid,true).length;
+  const total=REGIONS.reduce((s,r)=>s+cntAll(r.id),0);
+  t.innerHTML='<button class="tab'+(curTab==='all'?' on':'')+'" onclick="curTab=\'all\';checked.clear();renderTabs();renderList()">🌏 전체 지역<span class="n">'+total+'</span></button>';
+  REGIONS.forEach(r=>{
+    t.innerHTML+='<button class="tab'+(curTab===r.id?' on':'')+'" onclick="curTab=\''+r.id+'\';checked.clear();renderTabs();renderList()">'+r.name+'<span class="n">'+cntAll(r.id)+'</span></button>';
+  });
+  // 2단계: 카테고리 필터 (클릭 가능)
+  const rids=curTab==='all'?REGIONS.map(r=>r.id):[curTab];
+  const pool=rids.flatMap(rid=>viewFiltered(rid,true));
+  const cats=['food','night','spa','sight','stay'];
+  document.getElementById('statbar').innerHTML=
+    '<div class="stat'+(curCat==='all'?' on':'')+'" onclick="pickCat(\'all\')" style="cursor:pointer">'+
+    '<b style="color:var(--ink)">'+pool.length+'</b><span>📋 전체</span></div>'+
+    cats.map(c=>{
+      const n=pool.filter(x=>x.c===c).length;
+      return '<div class="stat'+(curCat===c?' on':'')+'" onclick="pickCat(\''+c+'\')" style="cursor:pointer">'+
+      '<b style="color:'+CAT_COLOR[c]+'">'+n+'</b><span>'+CAT_ICON[c]+' '+CAT_LABEL[c]+'</span></div>';
+    }).join('');
+}
+
+let checked=new Set();
+function ckey(p){ return p.region+'|'+p.n; }
+function toggleCheck(k,on){ on?checked.add(k):checked.delete(k); updateBulkBar(); }
+function checkAllVisible(on){
+  const rids=curTab==='all'?REGIONS.map(r=>r.id):[curTab];
+  rids.forEach(rid=>viewFiltered(rid).forEach(p=>{
+    const k=rid+'|'+p.n; on?checked.add(k):checked.delete(k);
+  }));
+  renderList();
+}
+function updateBulkBar(){
+  const bar=document.getElementById('bulkBar');
+  if(!bar) return;
+  const n=checked.size;
+  bar.style.display=n?'flex':'none';
+  const cnt=document.getElementById('bulkCnt');
+  if(cnt) cnt.textContent=n;
+}
+function bulkDelete(){
+  if(!checked.size) return;
+  const keys=[...checked];
+  const admins=load();
+  const adminKeys=[], baseKeys=[];
+  keys.forEach(k=>{
+    const [rid,name]=k.split('|');
+    const a=admins.find(x=>x.region===rid&&x.n===name);
+    (a?adminKeys:baseKeys).push(k);
+  });
+  const msg='선택한 '+keys.length+'곳을 처리합니다.\n\n'+
+    '· 직접 등록 '+adminKeys.length+'곳 → 완전 삭제\n'+
+    '· 내장 장소 '+baseKeys.length+'곳 → 사이트에서 숨김 (복구 가능)\n\n진행할까요?';
+  if(!confirm(msg)) return;
+  // 직접 등록분 삭제
+  if(adminKeys.length){
+    const del=new Set(adminKeys);
+    save(admins.filter(x=>!del.has(x.region+'|'+x.n)));
+  }
+  // 내장분 숨김
+  if(baseKeys.length){
+    const hid=loadHidden();
+    baseKeys.forEach(k=>{ if(!hid.includes(k)) hid.push(k); });
+    saveHidden(hid);
+  }
+  checked.clear();
+  renderTabs(); renderList();
+  toast(keys.length+'곳을 처리했습니다');
+}
+function bulkHideToggle(show){
+  if(!checked.size) return;
+  const hid=loadHidden();
+  [...checked].forEach(k=>{
+    const i=hid.indexOf(k);
+    if(show && i>=0) hid.splice(i,1);
+    else if(!show && i<0) hid.push(k);
+  });
+  saveHidden(hid);
+  checked.clear();
+  renderTabs(); renderList();
+  toast(show?'다시 표시했습니다':'숨겼습니다');
+}
+
+function renderList(){
+  const rids=curTab==='all'?REGIONS.map(r=>r.id):[curTab];
+  let rows=[];
+  rids.forEach(rid=>viewFiltered(rid).forEach(p=>rows.push({...p,region:rid})));
+  rows.sort((a,b)=>(a.base?1:0)-(b.base?1:0) || (b.ts||0)-(a.ts||0));
+
+  const el=document.getElementById('list');
+  const rgName=curTab==='all'?'전체 지역':(REGIONS.find(r=>r.id===curTab)||{}).name;
+  const catName=curCat==='all'?'전체':CAT_LABEL[curCat];
+  const hdr=document.getElementById('listHdr');
+  if(hdr) hdr.innerHTML='<b style="font-size:13.5px">'+rgName+' · '+catName+'</b>'+
+    '<span style="color:var(--sub);font-size:12px;margin-left:8px">'+rows.length+'곳</span>'+
+    (curCat!=='all'?'<button class="btn btn-line btn-sm" style="margin-left:auto" onclick="pickCat(\'all\')">카테고리 해제 ✕</button>':'');
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'+(curView==='hidden'?'숨긴 장소가 없습니다.':curView==='mine'?'직접 등록한 장소가 없습니다.<br>왼쪽 폼에서 추가해보세요.':'표시할 장소가 없습니다.')+'</div>';
+    return;
+  }
+  const bks=loadBk();
+  el.innerHTML=rows.map(p=>{
+    const rg=REGIONS.find(r=>r.id===p.region);
+    const hid=isHidden(p.region,p.n);
+    const bk=p.bk||bks[p.region+'|'+p.n];
+    const esc=s=>String(s).replace(/'/g,"\\'");
+    let btns='';
+    if(p.base){
+      btns='<button class="btn '+(hid?'btn-green':'btn-red')+' btn-sm" onclick="toggleHide(\''+p.region+'\',\''+esc(p.n)+'\')">'+(hid?'다시 표시':'사이트에서 숨김')+'</button>'+
+           '<button class="btn btn-line btn-sm" onclick="goBooking(\''+p.region+'\',\''+esc(p.n)+'\')">예약 연결</button>';
+    } else {
+      btns='<button class="btn btn-line btn-sm" onclick="editPlace(\''+p.id+'\')">수정</button>'+
+           '<button class="btn btn-red btn-sm" onclick="delPlace(\''+p.id+'\')">삭제</button>';
+    }
+    const k=p.region+'|'+p.n;
+    return '<div class="item '+p.c+'" style="'+(hid?'opacity:.5;':'')+'display:flex;gap:10px;align-items:flex-start">'+
+      '<input type="checkbox" '+(checked.has(k)?'checked':'')+' onchange="toggleCheck(\''+esc(k)+'\',this.checked)" '+
+      'style="width:auto;flex:0 0 auto;margin-top:4px;transform:scale(1.15)">'+
+      '<div style="flex:1;min-width:0">'+
+      '<div class="item-top"><div class="item-name">'+p.n+
+        (p.base?'<span class="badge-src">내장</span>':'<span class="badge-src" style="border-color:var(--gold);color:var(--gold)">직접등록</span>')+
+        (bk?'<span class="badge-src" style="border-color:var(--c-spa);color:var(--c-spa)">예약</span>':'')+
+        (hid?'<span class="badge-src" style="border-color:var(--red);color:var(--red)">숨김</span>':'')+
+      '</div><span class="tagcat '+p.c+'">'+CAT_LABEL[p.c]+'</span></div>'+
+      '<div class="item-meta">'+(rg?rg.name:'')+(p.r?' · ★ '+p.r.toFixed(1):'')+(p.rc?' ('+p.rc.toLocaleString()+')':'')+(p.a?' · '+p.a:'')+'</div>'+
+      (p.tip?'<div class="item-tip">'+p.tip+'</div>':'')+
+      '<div class="item-btns">'+btns+'</div></div></div>';
+  }).join('');
+  updateBulkBar();
+}
+
+/* 내장 장소 → 예약 탭으로 이동 */
+function goBooking(rid,name){
+  setMode('bk');
+  document.getElementById('bRegion').value=rid;
+  fillBaseList();
+  document.getElementById('bPlace').value=name;
+  loadBaseBk();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function exportJSON(){
+  const community={};
+  ['tl_members','tl_users','tl_banned','tl_support','tl_notifs','tl_notif_read','tl_coupons','tl_chat','tl_meet','tl_news','tl_food','tl_partner','tl_gallery'].forEach(k=>community[k]=cS(k,null));
+  const pack={places:load(),bookings:loadBk(),contact:loadContact(),hidden:loadHidden(),community};
+  const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='thaimap-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); toast('백업 파일을 내려받았습니다');
+}
+function importJSON(inp){
+  const f=inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const j=JSON.parse(e.target.result);
+      if(Array.isArray(j)){ // 구버전 형식
+        if(confirm('기존 데이터에 '+j.length+'건을 추가할까요?\n(취소 시 전체 교체)')) save(load().concat(j)); else save(j);
+      } else {
+        if(j.places) save(j.places);
+        if(j.bookings) saveBk(j.bookings);
+        if(j.contact){ const s=_cache.tl_support||{}; s.defaultContact=j.contact; cSS('tl_support',s); svSupport(s); }
+        if(j.hidden) saveHidden(j.hidden);
+        if(j.community) for(const k in j.community){ if(j.community[k]!=null) cSS(k,j.community[k]); }
+      }
+      renderTabs(); renderList(); renderBkList(); toast('불러오기 완료');
+    }catch(err){ alert('올바른 JSON 파일이 아닙니다.'); }
+    inp.value='';
+  };
+  rd.readAsText(f);
+}
+
+
+
+
+/* ===== OSM 임포터 (독립 스코프) ===== */
+const OSMI=(function(){
+
+/* ===== 기존 등록 장소 (중복 대조용) ===== */
+const EXISTING={
+ bkk:[["롱로스 (RONGROS)",13.74425,100.49171],["디 아일랜드 방콕",13.76356,100.50034],["카쫀 (Kajohn) 남부요리",13.75598,100.50968],["더 식스 (THE SIXTH)",13.7457,100.49132],["옥타브 루프탑 바",13.7235,100.58054],["사나이 루프탑 바 (카오산)",13.76068,100.49782],["스타라이트 루프탑 바",13.72772,100.52365],["뷰 루프탑 방콕",13.74958,100.54066],["오닉스 (ONYX) — RCA",13.75197,100.575],["루트66 (Route66) — RCA",13.75148,100.57533],["레벨스 (Levels) — 수쿰빗",13.74413,100.55661],["슈가 클럽 (Sugar Club)",13.74301,100.55652],["더 클럽 카오산 (The Club)",13.75924,100.49684],["더 원 카오산 (The One)",13.75921,100.4969],["타완댕 저먼 브루어리",13.69689,100.5458],["보이드 클럽 (VOID) 🆕",13.75349,100.57361],["엘리시움 이머시브 클럽 🆕",13.75149,100.57271],["싱싱 시어터 (Sing Sing) 🆕",13.72825,100.5735],["빔 (BEAM) — 통로",13.7348,100.58313],["인새니티 (Insanity)",13.74517,100.55653],["어밴던드 맨션 🆕",13.73526,100.56005],["스피커박스 라이브하우스 🆕",13.74198,100.5856],["어보브 일레븐 루프탑",13.74566,100.55677],["어퍼 하우스 (Upper House) 🆕",13.72154,100.56617],["돕앤더티 (Dope & Dirty) 🆕",13.73231,100.58619],["404 클럽 낫파운드 🆕",13.73223,100.56629],["살론 (SALONE) 🆕",13.73188,100.58616],["하우스 오브 사보이 🆕",13.72571,100.56799],["G.O.T 방콕 (GOT Bangkok) 🆕",13.72217,100.56632],["바카라 (BACCARAT) 🆕",13.72118,100.56603],["트루스 오어 데어 (통로) 🆕",13.73132,100.58456],["살롱 키쿠 (Salon Kiku) 🆕",13.72634,100.57644],["무스타치 (Mustache)",13.72724,100.52503],["하바나 소셜 (Havana Social)",13.74559,100.55587],["티추카 루프탑 바",13.72224,100.58071],["타이타이 마사지 프롬퐁",13.73007,100.56942],["타이타이 마사지 아속",13.73558,100.56201],["로프트 타이 스파 (수쿰빗 38)",13.71713,100.57952],["타이타이 마사지 나나",13.74093,100.55306],["왓프라깨오 (에메랄드 사원)",13.75164,100.4927],["왓아룬 (새벽 사원)",13.74387,100.48844],["왓수탓",13.75104,100.50109],["왕궁 (그랜드 팰리스)",13.74986,100.49158],["그랑데 센터포인트 수쿰빗 55",13.7317388,100.5824466],["힐튼 수쿰빗 방콕",13.7285987,100.5690408],["S31 수쿰빗 호텔",13.7336415,100.5658592],["아카라 방콕",13.7558961,100.5412317],["더 그래비티크 호텔 카오산",13.7606805,100.4978192],["라위깐라야 웰니스 리조트",13.767825,100.5050334]],
+ pty:[["할란스 파타야",12.93294,100.89882],["스카이바 서머 클럽",12.94577,100.88862],["더 콜렉티브 파타야",12.94772,100.88476],["문 웨일 (Moon Whale)",12.93002,100.87799],["잘와 클럽 (JALWA)",12.92615,100.87243],["릴라 클럽 (Leela)",12.92519,100.8709],["더 스톤스 하우스",12.92721,100.87453],["클럽 인섬니아 (Insomnia)",12.92583,100.87151],["808 나이트클럽",12.92662,100.87337],["더 원 마사지",12.92701,100.87433],["실라돈 스파",12.96373,100.89052],["티트리 스파",12.94749,100.88548],["진리의 성전 (Sanctuary of Truth)",12.97287,100.88913],["미니 시암",12.95532,100.90891],["타이거 파크 파타야",12.87081,100.90275],["두짓타니 파타야",12.9505757,100.8852883],["하드록 호텔 파타야",12.9392432,100.8855926],["가든 클리프 리조트 & 스파",12.9698704,100.8866216],["생추어리 리조트 파타야",12.9095923,100.8578119]],
+ cnx:[["가든 투 테이블",18.78651,98.99043],["마담 리 란나 & 난양",18.78264,98.97812],["롯라문 (Rodlamun)",18.78963,98.98584],["어나더 월드",18.78421,98.99194],["어라이즈 루프탑 바 (님만)",18.7973,98.96943],["푸라비다 바 (원님만)",18.8004,98.96795],["카멜리아 카페 & 뮤직바",18.8009,98.96749],["수르 바 (Surr Bar)",18.79914,98.96877],["조 인 옐로우 (Zoe in Yellow)",18.79089,98.99049],["웜업 카페 (Warm Up Cafe)",18.79525,98.96551],["앤티크 마사지",18.77646,98.98831],["지라 스파 (Zira Spa)",18.79054,98.99291],["더 홈 마사지 & 스파",18.77966,98.99404],["드 레스트 스파 (님만)",18.79965,98.96717],["왓체디루앙",18.78697,98.98658],["왓프라싱",18.78853,98.98199],["왓팔랏 (Wat Pha Lad)",18.7994,98.93415],["왓우몽 (터널 사원)",18.78273,98.95211],["호텔 센사이 님만",18.7941766,98.9706385],["하우스 (House)",18.7876519,98.9811069],["U 님만 치앙마이",18.8006605,98.9680188],["G 님만 치앙마이",18.7952268,98.9677457],["아트 마이 갤러리 호텔",18.7991237,98.9688412],["더 치앙마이 올드타운 호텔",18.7858669,98.9787316]],
+ cri:[["홈짠 (Homchan)",19.90642,99.82769],["타완댕 마하손 치앙라이",19.88842,99.83289],["바랍 (Barrab)",19.90327,99.83251],["치윗 탐마다",19.92171,99.84507],["시아미스 스파",19.90427,99.82857],["타임 타이 마사지 (TYME)",19.92488,99.83893],["라차야 마사지",19.90352,99.8332],["왓롱쿤 (백색 사원)",19.82327,99.76271],["더 리버리 바이 까타타니",19.9174144,99.8269884],["르 메르디앙 치앙라이 리조트",19.9222353,99.8542009],["까띨리야 마운틴 리조트 & 스파",20.2099573,99.7936811]],
+ pai:[["투 시스터즈",19.36307,98.4516],["센트리코 (멕시칸)",19.3588,98.44365],["저크 스팟 (Jerk Spot)",19.35672,98.44359],["재즈 하우스",19.35967,98.44347],["트웬티투 스피크이지",19.35902,98.44078],["바이닐 스카이 라운지",19.35818,98.44442],["빠이 캐년",19.30614,98.45252],["빠이 빌리지 부티크 리조트",19.3585556,98.4448326],["리버리 시암 리조트",19.3486677,98.4421632],["더 오이아 빠이 리조트",19.3530373,98.4470995]],
+ kkc:[["깬 (I KAEN)",16.46389,102.82574],["엔 콘깬 (이자카야)",16.45273,102.82398],["CQK 훠궈 (센트럴 콘깬)",16.43263,102.82651],["깬깨우 라이브하우스 & 루프탑",16.43013,102.83224],["바비 바 (Bobby Bar)",16.4276,102.82304],["에덴 바 & 레스토랑",16.45744,102.82439],["업 바 (UP BAR)",16.43387,102.83563],["지라팟 건강 마사지",16.43444,102.80838],["아룬사바이 마사지 & 스파",16.44795,102.84148],["왓농왕 (프라 마하탓 깬나콘)",16.40815,102.83422],["콘깬 국립박물관",16.4462,102.83863],["븡깬나콘 호수",16.41469,102.8382],["애드립 콘깬",16.4299939,102.8321869],["풀만 콘깬 라자 오키드",16.4289672,102.8302799],["코사 호텔 콘깬",16.4294865,102.8321272]],
+ udn:[["모닝 하우스",17.40645,102.80208],["우드 하우스 칩숍",17.42163,102.80079],["굿 데이즈 카페",17.40407,102.8028],["DNA 펍 우돈",17.41891,102.76767],["에까마이 우돈타니 (Ekkamai)",17.40099,102.77325],["더 울버린 (The Wolverine)",17.40525,102.7956],["유 온천 & 스파 (YU Onsen)",17.39926,102.80615],["굿타임 스파 & 마사지",17.41683,102.79839],["치라 마사지 & 스파",17.41871,102.78529],["우돈타니 시티 박물관",17.41166,102.78184],["농프라짝 공원",17.41921,102.78039],["락므앙 사당 (시티 필라)",17.41341,102.78764],["호텔 모코 (MOCO)",17.4025718,102.8043998],["센타라 우돈",17.4065879,102.8005834],["더 빤나라이 호텔",17.4061119,102.8021357]],
+ brm:[["슬란차 바 & 레스토랑",14.99582,103.09682],["반차이남 레스토랑",14.98985,103.11958],["런던 스테이크 부리람",14.99828,103.10235],["스피드 1 뮤직홀",15.00026,103.10817],["GP 바 & 레스토랑",15.00281,103.11163],["릴리프 스파 & 마사지",15.00216,103.11049],["부리람 마사지",14.99448,103.09964],["릴리 헤어 스파 & 마사지",14.98894,103.10461],["파놈룽 역사공원",14.53194,102.94033],["모데나 바이 프레이저 부리람",14.9632083,103.0934991],["아마리 부리람 유나이티드",14.9675458,103.0935118],["크레스코 호텔 부리람",14.9716553,103.105454]]
+};
+
+
+/* ===== 지역 ===== */
+const REGIONS=[
+ {id:'bkk',name:'방콕',lat:13.744,lng:100.52},
+ {id:'pty',name:'파타야',lat:12.935,lng:100.885},
+ {id:'cnx',name:'치앙마이',lat:18.789,lng:98.98},
+ {id:'cri',name:'치앙라이',lat:19.885,lng:99.815},
+ {id:'pai',name:'빠이',lat:19.345,lng:98.447},
+ {id:'kkc',name:'콘깬',lat:16.437,lng:102.828},
+ {id:'udn',name:'우돈타니 (이싼)',lat:17.411,lng:102.793},
+ {id:'brm',name:'부리람',lat:14.85,lng:103.05}
+];
+
+/* ===== 카테고리 → OSM 태그 ===== */
+const CATS=[
+ {k:'food', lb:'🍜 맛집', q:'["amenity"~"^(restaurant|fast_food)$"]'},
+ {k:'night',lb:'🍸 유흥·나이트', q:'["amenity"~"^(bar|pub|nightclub)$"]'},
+ {k:'spa',  lb:'💆 마사지·스파', q:'["shop"~"^(massage|beauty)$"]'},
+ {k:'sight',lb:'🛕 관광지', q:'["tourism"~"^(attraction|museum|viewpoint)$"]'},
+ {k:'stay', lb:'🏨 숙소·호텔', q:'["tourism"~"^(hotel|hostel|guest_house|resort)$"]'},
+ {k:'cafe', lb:'☕ 카페', q:'["amenity"="cafe"]', map:'food'}
+];
+const CAT_KO={food:'맛집',night:'나이트',spa:'스파',sight:'관광',stay:'숙소'};
+
+const $=id=>document.getElementById(id);
+let picked={food:true,night:true,spa:false,sight:false,stay:false,cafe:false};
+let results=[];
+
+function toastI(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2200); }
+
+/* 초기화 */
+function initUI(){
+$('osm_region').innerHTML=REGIONS.map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+$('osm_catGrid').innerHTML=CATS.map(c=>
+  '<button class="catbtn'+(picked[c.k]?' on':'')+'" data-c="'+(c.map||c.k)+'" data-k="'+c.k+'" onclick="OSMI.toggleCat(\''+c.k+'\',this)">'+c.lb+'</button>').join('');
+}
+function toggleCat(k,el){ picked[k]=!picked[k]; el.classList.toggle('on',picked[k]); }
+
+/* 거리 계산 (m) */
+function dist(a1,o1,a2,o2){
+  const R=6371000, t=Math.PI/180;
+  const dLa=(a2-a1)*t, dLo=(o2-o1)*t;
+  const x=Math.sin(dLa/2)**2+Math.cos(a1*t)*Math.cos(a2*t)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+function isDup(rid,lat,lng,name){
+  const list=EXISTING[rid]||[];
+  for(const [n,la,lo] of list){
+    if(dist(lat,lng,la,lo)<90) return n;                 // 90m 이내 = 같은 장소로 간주
+    if(n.toLowerCase().includes(String(name).toLowerCase()) && String(name).length>4) return n;
+  }
+  return null;
+}
+
+/* ===== OSM 조회 ===== */
+async function fetchOSM(){
+  const sel=CATS.filter(c=>picked[c.k]);
+  if(!sel.length){ toastI('카테고리를 하나 이상 선택해주세요'); return; }
+  const rid=$('osm_region').value;
+  const rg=REGIONS.find(r=>r.id===rid);
+  const rad=parseInt($('osm_radius').value)*1000;
+  const limit=parseInt($('osm_limit').value);
+
+  const parts=sel.map(c=>'nwr'+c.q+'["name"](around:'+rad+','+rg.lat+','+rg.lng+');').join('\n  ');
+  const query='[out:json][timeout:60];\n(\n  '+parts+'\n);\nout tags center '+limit+';';
+
+  $('osm_goBtn').disabled=true;
+  $('osm_status').innerHTML='<span class="spin"></span>OpenStreetMap 조회 중… (10~30초 소요)';
+
+  const endpoints=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+  ];
+  let data=null, lastErr='';
+  for(const ep of endpoints){
+    try{
+      const res=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(query)});
+      if(!res.ok){ lastErr='HTTP '+res.status; continue; }
+      data=await res.json(); break;
+    }catch(e){ lastErr=e.message; }
+  }
+  $('osm_goBtn').disabled=false;
+
+  if(!data){
+    $('osm_status').innerHTML='<span style="color:var(--red)">조회 실패: '+lastErr+'</span><br>잠시 후 다시 시도하거나 반경·결과 수를 줄여보세요.';
+    return;
+  }
+
+  const catOf=tags=>{
+    const a=tags.amenity||'', s=tags.shop||'', t=tags.tourism||'';
+    if(['bar','pub','nightclub'].includes(a)) return 'night';
+    if(['massage','beauty'].includes(s)) return 'spa';
+    if(['hotel','hostel','guest_house','resort'].includes(t)) return 'stay';
+    if(['attraction','museum','viewpoint'].includes(t)) return 'sight';
+    return 'food';
+  };
+  // 진단: 실제 반환된 태그 확인
+  const _diag={total:(data.elements||[]).length, withTags:0, addrKeys:{}};
+  (data.elements||[]).forEach(e=>{
+    const t=e.tags||{};
+    if(Object.keys(t).length) _diag.withTags++;
+    Object.keys(t).filter(k=>k.startsWith('addr:')).forEach(k=>_diag.addrKeys[k]=(_diag.addrKeys[k]||0)+1);
+  });
+  console.log('[OSM 진단]', _diag, '샘플:', (data.elements||[])[0]);
+  window._osmRaw=data;
+
+  const seen=new Set();
+  results=(data.elements||[]).map(e=>{
+    const lat=e.lat??e.center?.lat, lng=e.lon??e.center?.lon, tg=e.tags||{};
+    if(!lat||!lng||!tg.name) return null;
+    const key=Math.round(lat*1e5)+','+Math.round(lng*1e5);
+    if(seen.has(key)) return null; seen.add(key);
+    const nameKo=tg['name:ko']||'';
+    const nameEn=tg['name:en']||'';
+    const A=k=>tg['addr:'+k]||'';
+    // 태국 OSM에서 쓰이는 모든 주소 관련 태그 수집
+    const road=[A('housenumber'),A('street')].filter(Boolean).join(' ');
+    const area=[A('subdistrict')||A('suburb')||A('quarter')||A('neighbourhood')||A('village'),
+                A('district')||A('city')||A('town')||A('county'),
+                A('province')||A('state')].filter(Boolean).join(', ');
+    let addr=[road,area].filter(Boolean).join(', ');
+    // 폴백 1: 통합 주소 태그
+    if(!addr) addr=tg['addr:full']||tg['address']||tg['addr']||'';
+    // 폴백 2: 도로명/장소 관련 대체 태그
+    if(!addr) addr=[tg['addr:place'],tg['addr:street'],tg['street']].filter(Boolean).join(' ');
+    // 폴백 3: 소속 지역
+    if(!addr) addr=tg['is_in']||tg['is_in:city']||tg['addr:city']||'';
+    // 폴백 4: 태국어 주소
+    if(!addr) addr=tg['addr:full:th']||tg['name:th']&&tg['addr:city:th']||'';
+    return {
+      osm:e.type+'/'+e.id, name:tg.name, nameEn, nameKo, cat:catOf(tg),
+      lat:+lat.toFixed(6), lng:+lng.toFixed(6), addr,
+      q:(nameEn||tg.name),
+      phone:tg.phone||tg['contact:phone']||'', web:tg.website||tg['contact:website']||'',
+      hours:tg.opening_hours||'',
+      dup:isDup(rid,lat,lng,tg.name),
+      sel:false, ko:nameKo||nameEn||''
+    };
+  }).filter(Boolean);
+
+  const rawN=results.length;
+  let noAddrN=0;
+  if(document.getElementById('osm_needAddr').checked){
+    noAddrN=results.filter(r=>!r.addr).length;
+    results=results.filter(r=>!!r.addr);
+  }
+  results.forEach(r=>{ r.sel=!r.dup; });
+  const dupN=results.filter(r=>r.dup).length;
+  $('osm_status').innerHTML='✅ <b style="color:var(--green)">'+results.length+'곳</b> 조회 완료'+
+    (noAddrN?' <span style="color:var(--sub)">(주소 없는 '+noAddrN+'곳 제외)</span>':'')+
+    (dupN?' · <span style="color:var(--red)">'+dupN+'곳 중복</span>':'')+
+    '<br><span style="font-size:11px;color:var(--sub)">서버 응답 '+_diag.total+'건 · 태그 포함 '+_diag.withTags+'건 · 주소태그 종류: '+
+      (Object.keys(_diag.addrKeys).length?Object.keys(_diag.addrKeys).map(k=>k.replace('addr:','')+'('+_diag.addrKeys[k]+')').join(', '):'없음')+'</span>'+
+    '<br><span style="font-size:11.5px">'+
+    (results.length?'한국어 이름을 채우고 필요한 곳만 체크하세요.'
+      :'조건에 맞는 결과가 없습니다. "주소 정보가 없는 곳은 제외" 체크를 해제하거나 반경을 넓혀보세요.')+
+    '</span>';
+  renderList();
+}
+
+/* ===== 목록 ===== */
+function visible(){
+  const q=$('osm_q').value.trim().toLowerCase();
+  const hd=$('osm_hideDup').checked;
+  return results.filter(r=>(!hd||!r.dup)&&(!q||r.name.toLowerCase().includes(q)||(r.ko||'').toLowerCase().includes(q)));
+}
+function renderList(){
+  const list=visible();
+  $('osm_totCnt').textContent=results.length;
+  $('osm_selCnt').textContent=results.filter(r=>r.sel).length;
+  const on=results.some(r=>r.sel);
+  $('osm_expBtn').disabled=!on; $('osm_copyBtn').disabled=!on;
+
+  if(!results.length){ $('osm_list').innerHTML='<div class="empty">왼쪽에서 조건을 선택하고<br><b>OSM에서 불러오기</b>를 눌러주세요 🗺</div>'; return; }
+  if(!list.length){ $('osm_list').innerHTML='<div class="empty">조건에 맞는 결과가 없습니다.</div>'; return; }
+
+  $('osm_list').innerHTML=list.map(r=>{
+    const i=results.indexOf(r);
+    return '<div class="item '+r.cat+(r.dup?' dup':'')+'">'+
+    '<input type="checkbox" '+(r.sel?'checked':'')+' onchange="OSMI.results['+i+'].sel=this.checked;OSMI.renderList()">'+
+    '<div style="flex:1;min-width:0">'+
+      '<div class="iname">'+escI(r.name)+
+        (r.nameKo?'<span class="pill ko">한국어명 있음</span>':'')+
+        (r.dup?'<span class="pill dup">중복: '+escI(r.dup.slice(0,14))+'</span>':'')+
+      '</div>'+
+      '<div class="imeta">'+CAT_KO[r.cat]+' · '+r.lat.toFixed(4)+', '+r.lng.toFixed(4)+
+        (r.addr?' · '+escI(r.addr):' · <span style="color:var(--red)">주소 정보 없음</span>')+(r.hours?' · ⏰ '+escI(r.hours.slice(0,28)):'')+
+        (r.phone?' · ☎ '+escI(r.phone):'')+'</div>'+
+      '<div class="korow">'+
+        '<input placeholder="한국어 이름 (선택)" value="'+escI(r.ko)+'" oninput="OSMI.results['+i+'].ko=this.value">'+
+        '<input placeholder="주소 (비어있으면 직접 입력)" value="'+escI(r.addr)+'" oninput="OSMI.results['+i+'].addr=this.value" style="flex:1.4">'+
+        '<select onchange="OSMI.results['+i+'].cat=this.value;OSMI.renderList()">'+
+          Object.keys(CAT_KO).map(k=>'<option value="'+k+'"'+(r.cat===k?' selected':'')+'>'+CAT_KO[k]+'</option>').join('')+
+        '</select>'+
+      '</div>'+
+    '</div></div>';
+  }).join('');
+}
+function escI(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+/* 주소 없는 항목 → 좌표로 주소 역조회 (Nominatim, 1초 1건 제한 준수) */
+async function fillAddresses(){
+  const targets=results.filter(r=>!r.addr);
+  if(!targets.length){ toastI('주소가 비어있는 항목이 없습니다'); return; }
+  if(!confirm(targets.length+'곳의 주소를 좌표로 조회합니다.\n서버 정책상 1초에 1건씩 처리되어 약 '+targets.length+'초 걸립니다.\n진행할까요?')) return;
+  const btn=document.getElementById('osm_fillBtn');
+  let done=0, ok=0;
+  for(const r of targets){
+    btn.textContent='주소 조회 중… '+(++done)+'/'+targets.length;
+    try{
+      const u='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+r.lat+'&lon='+r.lng+'&accept-language=en&zoom=18';
+      const res=await fetch(u,{headers:{'Accept':'application/json'}});
+      if(res.ok){
+        const j=await res.json();
+        const a=j.address||{};
+        const road=[a.house_number,a.road].filter(Boolean).join(' ');
+        const area=[a.suburb||a.neighbourhood||a.quarter, a.city_district||a.city||a.town||a.village].filter(Boolean).join(', ');
+        r.addr=[road,area].filter(Boolean).join(', ')||j.display_name||'';
+        if(r.addr) ok++;
+      }
+    }catch(e){}
+    await new Promise(s=>setTimeout(s,1100)); // Nominatim 이용약관: 초당 1건
+  }
+  btn.textContent='📍 주소 자동 채우기';
+  renderList();
+  toastI(ok+'곳 주소를 채웠습니다');
+}
+function selectAll(v){
+  const vis=visible();
+  vis.forEach(r=>r.sel=v);
+  renderList();
+  toastI(v?vis.length+'곳 선택':'선택 해제');
+}
+
+/* ===== 내보내기 ===== */
+function buildJSON(){
+  const rid=$('osm_region').value;
+  const sel=results.filter(r=>r.sel);
+  const places=sel.map(r=>({
+    id:'osm'+Date.now()+Math.floor(Math.random()*1e4),
+    region:rid, c:r.cat,
+    z:zoneOf(rid,r.lat,r.lng),
+    n:(r.ko||r.name).trim(),
+    lat:r.lat, lng:r.lng, r:0, rc:0,
+    a:r.addr||'',
+    q:(r.q||r.name||'').trim(),
+    tip:[r.ko&&r.ko!==r.name?'원어명: '+r.name:'', r.hours?'영업시간 '+r.hours:'', r.phone?'☎ '+r.phone:'', 'OSM '+r.osm].filter(Boolean).join(' · '),
+    pid:'', admin:true, ts:Date.now()
+  }));
+  return {places, bookings:{}, contact:null, hidden:[]};
+}
+function exportJSON(){
+  const pack=buildJSON();
+  if(!pack.places.length){ toastI('선택된 항목이 없습니다'); return; }
+  const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='osm-import-'+$('osm_region').value+'-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toastI(pack.places.length+'곳을 JSON으로 저장했습니다 📥');
+}
+async function copyJSON(){
+  const pack=buildJSON();
+  if(!pack.places.length){ toastI('선택된 항목이 없습니다'); return; }
+  try{
+    await navigator.clipboard.writeText(JSON.stringify(pack,null,2));
+    toastI('클립보드에 복사되었습니다 📋');
+  }catch(e){ toastI('복사 실패 — JSON 내보내기를 사용해주세요'); }
+}
+
+return {fetchOSM,toggleCat,renderList,selectAll,exportJSON,copyJSON,fillAddresses,
+  get results(){return results;}, init:()=>{initUI();}};
 })();
+
 </script>
 </body>
 </html>

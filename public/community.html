@@ -399,6 +399,105 @@ function memberLevel(n){ const m=members()[n]; return (m&&m.level)||1; }
 function touchMember(){}
 
 
+
+
+/* ===== 보조 함수 (서버 버전) ===== */
+function closeProfile(){ const m=document.getElementById('profileModal'); if(m) m.style.display='none'; }
+async function changeMyPw(){
+  const np=prompt('새 비밀번호 (6자 이상)'); if(!np) return;
+  if(np.length<6){ alert('6자 이상 입력해주세요.'); return; }
+  try{ await TL.changePassword(np); toast('비밀번호가 변경되었습니다'); }
+  catch(e){ alert(e.message); }
+}
+async function myCoupons(){ try{ return await TL.myCoupons(); }catch(e){ return []; } }
+function addRegionStat(){}
+function saveMembers(){}
+function notifsAll(){ return {}; }
+function pushNotif(t,i,ti,b){ return TL.notifSend(t,i,ti,b); }
+async function myNotifs(){ return await TL.notifs(); }
+async function unreadCount(){ return await TL.unreadCount(); }
+
+/* ===== 복원된 함수 ===== */
+function lvlBadge(n,small){
+  const l=memberLevel(n);
+  return '<span class="lvb lv'+l+(small?' sm':'')+'">'+LEVELS[l][0]+' Lv'+l+'</span>';
+}
+
+async function openProfile(){
+  try{ _cache._coupons=await TL.myCoupons(); }catch(e){ _cache._coupons=[]; }
+  _openProfileUI();
+}
+function _openProfileUI(){
+  const n=getNick(); if(!n) return;
+  const u=TL.me()||{};
+  const m=members()[n]||{};
+  const maskPw='●'.repeat(6);
+  $('profileBody').innerHTML=
+  '<div style="text-align:center;margin-bottom:16px">'+
+  '<div class="avatar" style="width:56px;height:56px;font-size:20px;margin:0 auto 10px;background:'+nickColor(n)+'">'+esc(n.slice(0,2))+'</div>'+
+  '<div style="font-size:19px;font-weight:900">'+esc(n)+'</div>'+
+  '<div style="margin-top:6px">'+lvlBadge(n)+' <span style="color:var(--sub);font-size:11px">'+LEVELS[memberLevel(n)][1]+'</span></div>'+
+  '<div style="color:var(--sub);font-size:12px;margin-top:3px">가입일 '+(u.created_at?new Date(u.created_at).toLocaleDateString('ko-KR'):'-')+'</div></div>'+
+
+  '<div style="background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px 14px;margin-bottom:14px">'+
+  [['실명',u.name],['핸드폰번호',u.phone],['레벨',LEVELS[u.level||1][1]],['비밀번호',maskPw]].map(([k,v])=>
+    '<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px">'+
+    '<span style="color:var(--sub)">'+k+'</span><b style="text-align:right;word-break:break-all">'+esc(v||'-')+'</b></div>').join('').replace(/border-bottom:1px solid var\(--line\)(?![\s\S]*border-bottom)/,'border-bottom:none')+
+  '</div>'+
+
+  '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'+
+  [['게시글',m.posts||0],['채팅',m.chats||0],['접속',(m.logins||0)+'회']].map(([k,v])=>
+    '<div style="background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px;text-align:center">'+
+    '<b style="display:block;font-size:17px;color:var(--gold)">'+v+'</b><span style="color:var(--sub);font-size:11px">'+k+'</span></div>').join('')+
+  '</div>'+
+
+  (function(){
+    const cs=_cache._coupons||[];
+    return '<div style="margin-bottom:16px"><b style="font-size:13px">🎟 내 쿠폰함 <span style="color:var(--gold)">'+cs.length+'</span></b>'+
+    (cs.length?cs.map(cp=>
+      '<div style="background:linear-gradient(135deg,#f6ecce,#eedfb4);border:1px dashed var(--gold);border-radius:11px;padding:11px 13px;margin-top:8px">'+
+      '<div style="font-weight:900;font-size:13.5px;color:#7a4a08">🎟 '+esc(cp.title)+'</div>'+
+      (cp.partner?'<div style="font-size:11.5px;color:#9a7a3a;margin-top:2px">'+esc(cp.partner)+'</div>':'')+
+      (cp.descr?'<div style="font-size:12px;color:#4a3510;margin-top:4px;line-height:1.5">'+esc(cp.descr)+'</div>':'')+
+      (cp.code?'<div style="margin-top:7px;background:#fff;border-radius:8px;padding:7px 10px;font-family:monospace;font-weight:900;font-size:14px;color:#243c40;text-align:center;letter-spacing:.12em">'+esc(cp.code)+'</div><div style="font-size:10px;color:#9a7a3a;text-align:center;margin-top:3px">방문 시 이 코드를 보여주세요</div>':'')+
+      '</div>').join('')
+    :'<div style="color:var(--sub);font-size:12px;margin-top:6px">아직 받은 쿠폰이 없어요. 제휴업체 예약 시 쿠폰 선물이 도착할 수 있어요!</div>')+'</div>';
+  })()+
+  '<div style="display:flex;gap:8px">'+
+  '<button class="btn btn-line" style="flex:1" onclick="changeMyPw()">비밀번호 변경</button>'+
+  '<button class="btn btn-red" style="flex:1" onclick="closeProfile();logout()">로그아웃</button></div>';
+  $('profileModal').style.display='flex';
+}
+
+async function renderHome(){
+  const [mt,nw]=await Promise.all([TL.posts('meet'),TL.posts('news')]);
+  _cache.tl_meet=mt.map(mapPost); _cache.tl_news=nw.map(mapPost);
+  const meets=S('tl_meet',[]).filter(m=>m.date>=new Date().toISOString().slice(0,10)).slice(0,3);
+  const news=S('tl_news',[]).slice(0,3);
+  const foods=S('tl_food',[]).slice(0,3);
+  const feed=x=>x.length?x.map(p=>'<div class="feeditem" onclick="go(\''+p._pg+'\')"><b>'+esc(p.title)+'</b><div class="meta">'+esc(p.author||'')+' · '+timeago(p.ts)+'</div></div>').join(''):'<div class="empty" style="padding:16px">아직 글이 없습니다</div>';
+  meets.forEach(m=>m._pg='meet'); news.forEach(m=>m._pg='news'); foods.forEach(m=>m._pg='food');
+
+  $('main').innerHTML=
+  '<div class="hero"><div class="eyebrow">THAI LIFE COMMUNITY</div>'+
+  '<h1>태국에서의 모든 순간,<br><em>타이라이프</em>에서 함께</h1>'+
+  '<p>실시간 채팅으로 소통하고, 정모·번개로 만나고, 검증된 맛집과 나이트라이프 정보를 나누는 태국 한인 커뮤니티입니다.</p></div>'+
+
+  '<div class="quick">'+
+  '<div class="qcard" onclick="go(\'map\')"><span class="ic">🗺</span><b>태국 지도</b><span>지역별 찾아보기</span></div>'+
+  '<div class="qcard" onclick="go(\'meet\')"><span class="ic">🤝</span><b>정모·번개</b><span>오프라인 모임</span></div>'+
+  '<div class="qcard" onclick="go(\'news\')"><span class="ic">📰</span><b>태국뉴스</b><span>현지 소식</span></div>'+
+  '<div class="qcard" onclick="go(\'food\')"><span class="ic">🍜</span><b>맛집추천</b><span>회원 추천</span></div>'+
+  '<div class="qcard" onclick="go(\'partner\')"><span class="ic">🤝</span><b>⭐ 제휴업체 ⭐</b><span>할인·예약</span></div>'+
+  '<div class="qcard" onclick="go(\'gallery\')"><span class="ic">📷</span><b>갤러리</b><span>사진 공유</span></div>'+
+  '<div class="qcard" onclick="go(\'supportCS\')" style="border-top-color:var(--mint)"><span class="ic">🎧</span><b>고객센터</b><span>문의·신고·제휴</span></div>'+'<div class="qcard" onclick="go(\'supportBK\')" style="border-top-color:var(--c-stay)"><span class="ic">📅</span><b>예약상담</b><span>클럽·스파·숙소</span></div>'+
+  '</div>'+
+
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🤝 다가오는 정모·번개</h2><small onclick="go(\'meet\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(meets)+'</div></div>'+
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📰 최신 뉴스</h2><small onclick="go(\'news\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(news)+'</div></div>'+
+  '<div class="box"><div class="section-title"><h2>🍜 최근 맛집 추천</h2><small onclick="go(\'food\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(foods)+'</div></div>';
+}
+
 /* 서버 post → 화면 필드 변환 */
 function mapPost(p){
   return { id:p.id, ts:new Date(p.created_at).getTime(),
