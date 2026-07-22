@@ -665,10 +665,15 @@ async function sendChat(){
   try{ await TL.chatSend(txt); await loadChat(true); }
   catch(e){ alert(e.message); }
 }
-function toggleChat(){
+function toggleChat(open){
   const p=$('chatPanel');
-  p.classList.toggle('on');
-  if(p.classList.contains('on')) loadChat(true);
+  // 인자가 있으면 명시적으로, 없으면 토글
+  let willOpen;
+  if(open===true) willOpen=true;
+  else if(open===false) willOpen=false;
+  else willOpen=!p.classList.contains('on');
+  p.classList.toggle('on', willOpen);
+  if(willOpen) loadChat(true);
 }
 
 const PAGES=[

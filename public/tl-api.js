@@ -74,6 +74,8 @@ const TL = {
   async signIn(email, password) {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+    // 프로필 로드를 끝까지 기다림 (이게 없으면 로그인 직후 내 정보가 안 보임)
+    if (data.user) await this._loadMe(data.user.id);
     return data;
   },
 
