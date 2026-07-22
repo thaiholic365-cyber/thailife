@@ -123,7 +123,6 @@ const TL = {
       text, notice, is_admin: isAdmin
     });
     if (error) throw new Error(error.message);
-    if (!notice && !isAdmin) await sb.rpc('noop').catch(() => {});
   },
   async replySend(chatId, text) {
     const me = this._me; if (!me) throw new Error('로그인이 필요합니다.');
