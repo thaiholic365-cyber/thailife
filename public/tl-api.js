@@ -50,6 +50,13 @@ const TL = {
       options: { data: { nick, name, phone } }
     });
     if (error) throw new Error(this._authMsg(error.message));
+    // 세션이 없으면(이메일 확인 설정이 켜진 경우) 즉시 로그인 시도
+    if (!data.session) {
+      const { error: e2 } = await sb.auth.signInWithPassword({ email, password });
+      if (e2) throw new Error('가입은 완료됐지만 자동 로그인에 실패했습니다. Supabase에서 Confirm email을 꺼주세요.');
+    }
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) await this._loadMe(session.user.id);
     return data;
   },
 

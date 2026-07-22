@@ -157,8 +157,8 @@ body{background:
   <div class="gatebox">
     <div class="eyebrow" style="color:var(--gold);font-size:11px;letter-spacing:.26em;font-weight:700">THAI MAP ADMIN</div>
     <h2 style="margin-top:8px">관리자 로그인</h2>
-    <p>등록된 관리자 비밀번호를 입력하세요.<br>기본값: <b style="color:var(--gold)">admin1234</b></p>
-    <input id="gateEmail" type="email" placeholder="관리자 이메일" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit">
+    <p>관리자로 등록된 <b style="color:var(--gold)">핸드폰번호</b>와 비밀번호로 로그인하세요.</p>
+    <input id="gateEmail" type="tel" placeholder="핸드폰번호 (예: 010-1234-5678)" style="width:100%;margin-bottom:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit">
     <input type="password" id="pw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')login()">
     <div style="margin-top:12px"><button class="btn btn-gold" style="width:100%" onclick="login()">로그인</button></div>
     <div id="pwerr" style="color:var(--red);font-size:12px;margin-top:10px;min-height:16px"></div>
@@ -1428,13 +1428,22 @@ function clearChat(){
 
 /* ===== 로그인 ===== */
 function getPw(){ return ''; }
+
+function phoneToEmail(phone){
+  let d=String(phone).replace(/[^0-9]/g,'');
+  if(d.startsWith('82')) d='0'+d.slice(2);
+  else if(d.startsWith('66')) d='0'+d.slice(2);
+  d=d.replace(/^0+/,'0');
+  return d+'@tl.local';
+}
+
 async function login(){
-  const email=(document.getElementById('gateEmail')||{}).value||'';
+  const phone=(document.getElementById('gateEmail')||{}).value||'';
   const pw=document.getElementById('pw').value;
   const err=document.getElementById('gateErr')||document.getElementById('err');
   if(err) err.textContent='로그인 중…';
   try{
-    await TL.signIn(email.trim(),pw);
+    await TL.signIn(phoneToEmail(phone.trim()),pw);
     if(!TL.isAdmin()){ await TL.signOut(); if(err) err.textContent='관리자 권한이 없는 계정입니다.'; return; }
     document.getElementById('gate').style.display='none';
     await bootAdmin();
