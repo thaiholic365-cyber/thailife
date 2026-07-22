@@ -223,9 +223,36 @@ body.embed .regionhead h2{font-size:17px}
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./config.js"></script>
-<script src="./tl-api.js"></script>
+<script>
+(function(){
+  // Supabase SDK 로드 (폴백 포함)
+  var cdns=[
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+    'https://unpkg.com/@supabase/supabase-js@2',
+    'https://cdn.skypack.dev/@supabase/supabase-js@2'
+  ];
+  var i=0;
+  function load(){
+    if(i>=cdns.length){ document.addEventListener('DOMContentLoaded',function(){
+      document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif"><h3>연결 라이브러리를 불러오지 못했습니다</h3><p>인터넷 연결 또는 광고 차단 프로그램을 확인한 뒤 새로고침하세요.</p></div>';
+    }); return; }
+    var s=document.createElement('script');
+    s.src=cdns[i]; s.onload=afterSDK; s.onerror=function(){ i++; load(); };
+    document.head.appendChild(s);
+  }
+  function afterSDK(){
+    // config.js → tl-api.js 순차 로드
+    var c=document.createElement('script'); c.src='./config.js';
+    c.onload=function(){
+      var a=document.createElement('script'); a.src='./tl-api.js';
+      a.onload=function(){ window.__TL_READY=true; document.dispatchEvent(new Event('tl-ready')); };
+      document.head.appendChild(a);
+    };
+    document.head.appendChild(c);
+  }
+  load();
+})();
+</script>
 <script>
 const CATS=[
  {k:'all',  ic:'📍', lb:'전체'},
@@ -601,7 +628,7 @@ function render(flyTo){
 }
 // iframe 안에서 열렸으면 컴팩트 모드
 if(window.self!==window.top) document.body.classList.add('embed');
-(async function(){
+function startMap(){ (async function(){
   await loadAdminPlaces();
   renderCats();
   renderZones();
@@ -616,9 +643,10 @@ if(window.self!==window.top) document.body.classList.add('embed');
       (adminN?' · 관리자 등록 '+adminN+'곳 포함':'')+
       (HIDDEN.length?' · 숨김 '+HIDDEN.length+'곳 제외':'');
   }
-})();
-setTimeout(()=>map.invalidateSize(),300);
-window.addEventListener('resize',()=>map.invalidateSize());
+})(); }
+if(window.__TL_READY) startMap(); else document.addEventListener('tl-ready', startMap);
+setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} },600);
+window.addEventListener('resize',()=>{ try{ map.invalidateSize(); }catch(e){} });
 </script>
 </body>
 </html>
