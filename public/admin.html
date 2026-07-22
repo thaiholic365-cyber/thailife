@@ -1483,7 +1483,20 @@ function changePw(){
   if(np.length<4){ alert('4자 이상 입력해주세요.'); return; }
    toast('비밀번호가 변경되었습니다');
 }
-(async function(){ await TL.init(); if(TL.isAdmin()){ document.getElementById('gate').style.display='none'; await bootAdmin(); } })();
+(async function(){
+  if(typeof TL==='undefined'){
+    const g=document.getElementById('gateErr');
+    if(g) g.innerHTML='<span style="color:var(--red)">서버 연결 실패: config.js 또는 인터넷 연결을 확인하세요.</span>';
+    return;
+  }
+  try{
+    await TL.init();
+    if(TL.isAdmin()){ document.getElementById('gate').style.display='none'; await bootAdmin(); }
+  }catch(e){
+    const g=document.getElementById('gateErr');
+    if(g) g.innerHTML='<span style="color:var(--red)">'+String(e.message||e)+'</span>';
+  }
+})();
 
 /* ===== 데이터 ===== */
 function load(){ return PLACES||[]; }

@@ -2,8 +2,19 @@
    타이라이프 · Supabase 데이터 레이어
    localStorage를 대체합니다.
    ============================================ */
-const SUPABASE_URL = window.TL_CONFIG?.url || '';
-const SUPABASE_KEY = window.TL_CONFIG?.anonKey || '';
+const SUPABASE_URL = (window.TL_CONFIG && window.TL_CONFIG.url) || '';
+const SUPABASE_KEY = (window.TL_CONFIG && window.TL_CONFIG.anonKey) || '';
+
+// SDK 로드 확인
+if (!window.supabase || !window.supabase.createClient) {
+  throw new Error('Supabase SDK를 불러오지 못했습니다. 인터넷 연결 또는 광고 차단 프로그램을 확인하세요.');
+}
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error('config.js에 Supabase 주소와 키가 없습니다.');
+}
+if (!/^https:\/\/.+\.supabase\.co$/.test(SUPABASE_URL)) {
+  throw new Error('config.js의 url 형식이 올바르지 않습니다: ' + SUPABASE_URL);
+}
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
