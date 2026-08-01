@@ -423,6 +423,7 @@ function needNick(){
 function guard(kind){ return needNick(); }
 function members(){ return _cache.tl_members||{}; }
 function isBlocked(n){ const m=members()[n]; return !!(m&&m.blocked); }
+const LEVELS={1:['🌱','새싹'],2:['✈️','여행자'],3:['⭐','단골'],4:['💎','VIP'],5:['🏆','명예회원']};
 function memberLevel(n){ const m=members()[n]; return (m&&m.level)||1; }
 function touchMember(){}
 
