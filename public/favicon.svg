@@ -1,0 +1,63 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EBD9A8"/>
+      <stop offset="0.5" stop-color="#D4AF37"/>
+      <stop offset="1" stop-color="#B8942A"/>
+    </linearGradient>
+    <linearGradient id="trunk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8B6F3E"/>
+      <stop offset="1" stop-color="#5E4A28"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3D7A4A"/>
+      <stop offset="1" stop-color="#255536"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFF3D0"/>
+      <stop offset="1" stop-color="#FFE08A"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 배경 (둥근 사각형) -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- 태양 -->
+  <circle cx="360" cy="150" r="52" fill="url(#sun)" opacity="0.9"/>
+
+  <!-- 모래 언덕 -->
+  <path d="M0 400 Q 128 360 256 388 T 512 380 L 512 512 L 0 512 Z" fill="#E8D5A0" opacity="0.55"/>
+  <path d="M0 430 Q 160 405 320 425 T 512 418 L 512 512 L 0 512 Z" fill="#DBC488" opacity="0.6"/>
+
+  <!-- 야자수 줄기 -->
+  <path d="M232 430 Q 244 320 236 210 Q 234 190 250 182 Q 240 200 250 210 Q 262 320 258 430 Z" fill="url(#trunk)"/>
+  <!-- 줄기 마디 -->
+  <path d="M238 400 Q 248 398 256 402" stroke="#4A3A20" stroke-width="4" fill="none" opacity="0.5"/>
+  <path d="M237 360 Q 247 358 255 362" stroke="#4A3A20" stroke-width="4" fill="none" opacity="0.5"/>
+  <path d="M236 320 Q 246 318 253 322" stroke="#4A3A20" stroke-width="4" fill="none" opacity="0.5"/>
+  <path d="M235 280 Q 244 278 251 282" stroke="#4A3A20" stroke-width="4" fill="none" opacity="0.5"/>
+
+  <!-- 야자수 잎 (6방향) -->
+  <g transform="translate(246, 185)">
+    <!-- 왼쪽 위 -->
+    <path d="M0 0 Q -80 -50 -160 -40 Q -90 -20 -70 -8 Q -100 -22 -155 -10 Q -80 4 0 0 Z" fill="url(#leaf)"/>
+    <!-- 오른쪽 위 -->
+    <path d="M0 0 Q 80 -50 160 -40 Q 90 -20 70 -8 Q 100 -22 155 -10 Q 80 4 0 0 Z" fill="url(#leaf)"/>
+    <!-- 왼쪽 -->
+    <path d="M0 0 Q -95 -8 -168 30 Q -95 12 -72 18 Q -110 16 -150 55 Q -75 20 0 0 Z" fill="url(#leaf)"/>
+    <!-- 오른쪽 -->
+    <path d="M0 0 Q 95 -8 168 30 Q 95 12 72 18 Q 110 16 150 55 Q 75 20 0 0 Z" fill="url(#leaf)"/>
+    <!-- 왼쪽 아래 -->
+    <path d="M0 0 Q -70 30 -120 90 Q -70 40 -52 40 Q -78 55 -100 105 Q -50 45 0 0 Z" fill="url(#leaf)"/>
+    <!-- 오른쪽 아래 -->
+    <path d="M0 0 Q 70 30 120 90 Q 70 40 52 40 Q 78 55 100 105 Q 50 45 0 0 Z" fill="url(#leaf)"/>
+    <!-- 중앙 위로 -->
+    <path d="M0 0 Q -18 -85 -10 -160 Q 0 -110 10 -160 Q 18 -85 0 0 Z" fill="url(#leaf)"/>
+    <!-- 중심점 -->
+    <circle cx="0" cy="0" r="12" fill="#1F4A2E"/>
+    <!-- 코코넛 -->
+    <circle cx="-16" cy="14" r="11" fill="#6B4F2A"/>
+    <circle cx="10" cy="18" r="11" fill="#5E4525"/>
+    <circle cx="-2" cy="24" r="10" fill="#7A5A30"/>
+  </g>
+</svg>
