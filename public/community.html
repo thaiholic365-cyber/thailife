@@ -309,35 +309,26 @@ body{background:
   <a href="./index.html">🗺 태국 지도 바로가기</a> · <a href="./admin.html">관리자</a>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="./tl-api.js"></script>
 <script>
-(function(){
-  // Supabase SDK 로드 (폴백 포함)
-  var cdns=[
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-    'https://unpkg.com/@supabase/supabase-js@2',
-    'https://cdn.skypack.dev/@supabase/supabase-js@2'
-  ];
-  var i=0;
-  function load(){
-    if(i>=cdns.length){ document.addEventListener('DOMContentLoaded',function(){
-      document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif"><h3>연결 라이브러리를 불러오지 못했습니다</h3><p>인터넷 연결 또는 광고 차단 프로그램을 확인한 뒤 새로고침하세요.</p></div>';
-    }); return; }
-    var s=document.createElement('script');
-    s.src=cdns[i]; s.onload=afterSDK; s.onerror=function(){ i++; load(); };
-    document.head.appendChild(s);
-  }
-  function afterSDK(){
-    // config.js → tl-api.js 순차 로드
-    var c=document.createElement('script'); c.src='./config.js';
-    c.onload=function(){
-      var a=document.createElement('script'); a.src='./tl-api.js';
-      a.onload=function(){ window.__TL_READY=true; document.dispatchEvent(new Event('tl-ready')); };
-      document.head.appendChild(a);
-    };
-    document.head.appendChild(c);
-  }
-  load();
-})();
+/* SDK·config·tl-api 로드 확인 후 앱 시작 */
+window.__bootTL = function(startFn){
+  var tries = 0;
+  (function wait(){
+    if (window.TL && window.supabase) { startFn(); return; }
+    if (tries++ > 100) {  // 10초 대기 후 실패 안내
+      var m = document.getElementById('main') || document.body;
+      if (m) m.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif">'
+        + '<h3>서버 연결에 실패했습니다</h3>'
+        + '<p style="color:#888;font-size:14px">인터넷 연결 또는 광고 차단 프로그램을 확인한 뒤<br>'
+        + '<a href="javascript:location.reload()" style="color:#c9a227">새로고침</a>해주세요.</p></div>';
+      return;
+    }
+    setTimeout(wait, 100);
+  })();
+};
 </script>
 <script>
 /* ===== 서버 모드: localStorage 헬퍼를 캐시로 전환 ===== */
@@ -695,6 +686,8 @@ async function go(id){
   window.scrollTo({top:0});
 }
 function renderMap(){
+  // 이미 지도가 그려져 있으면 다시 만들지 않음 (깜박임 방지)
+  if(document.getElementById('mapFrame')) return;
   const h=Math.max(430,Math.min(660,Math.round(window.innerHeight*0.66)));
   $('main').innerHTML=
   '<div class="box" style="padding:11px">'+
@@ -702,7 +695,7 @@ function renderMap(){
   '<b style="font-size:15px">🗺 태국 지도</b>'+
   '<small style="color:var(--sub);font-size:11.5px">지역별 찾아보기</small>'+
   '<a href="./index.html" target="_blank" rel="noopener" style="margin-left:auto;font-size:11.5px;font-weight:800;text-decoration:none">전체화면 ↗</a></div>'+
-  '<iframe src="./index.html?t='+Date.now()+'" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
+  '<iframe id="mapFrame" src="./index.html" loading="lazy" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
   '</div>';
 }
 $('nav').innerHTML=PAGES.map(p=>'<button class="nbtn" data-id="'+p.id+'" onclick="go(\''+p.id+'\')">'+p.lb+'</button>').join('');
@@ -1059,7 +1052,7 @@ function startApp(){ (async function(){
       '<span style="font-size:11.5px">'+String(e.message||e)+'</span></p></div>';
   }
 })(); }
-if(window.__TL_READY) startApp(); else document.addEventListener('tl-ready', startApp);
+window.__bootTL(startApp);
 </script>
 </body>
 </html>
