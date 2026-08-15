@@ -444,6 +444,15 @@ async function changeMyPw(){
   try{ await TL.changePassword(np); toast('비밀번호가 변경되었습니다'); }
   catch(e){ alert(e.message); }
 }
+async function useMyCoupon(id){
+  if(!confirm('이 쿠폰을 사용 처리할까요? 사용 후에는 되돌릴 수 없습니다.')) return;
+  try{
+    await TL.useCoupon(id);
+    _cache._coupons=await TL.myCoupons();
+    toast('쿠폰을 사용했습니다 🎟');
+    _openProfileUI();
+  }catch(e){ alert(e.message); }
+}
 async function myCoupons(){ try{ return await TL.myCoupons(); }catch(e){ return []; } }
 function addRegionStat(){}
 function saveMembers(){}
@@ -490,11 +499,13 @@ function _openProfileUI(){
     const cs=_cache._coupons||[];
     return '<div style="margin-bottom:16px"><b style="font-size:13px">🎟 내 쿠폰함 <span style="color:var(--gold)">'+cs.length+'</span></b>'+
     (cs.length?cs.map(cp=>
-      '<div style="background:linear-gradient(135deg,#f6ecce,#eedfb4);border:1px dashed var(--gold);border-radius:11px;padding:11px 13px;margin-top:8px">'+
-      '<div style="font-weight:900;font-size:13.5px;color:#7a4a08">🎟 '+esc(cp.title)+'</div>'+
+      '<div style="background:'+(cp.used?'#e8e8e8':'linear-gradient(135deg,#f6ecce,#eedfb4)')+';border:1px dashed '+(cp.used?'#bbb':'var(--gold)')+';border-radius:11px;padding:11px 13px;margin-top:8px;position:relative'+(cp.used?';opacity:.75':'')+'">'+
+      (cp.used?'<div style="position:absolute;top:8px;right:10px;background:#5a5a5a;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">사용완료</div>':'')+
+      '<div style="font-weight:900;font-size:13.5px;color:'+(cp.used?'#666':'#7a4a08')+'">🎟 '+esc(cp.title)+'</div>'+
       (cp.partner?'<div style="font-size:11.5px;color:#9a7a3a;margin-top:2px">'+esc(cp.partner)+'</div>':'')+
       (cp.descr?'<div style="font-size:12px;color:#4a3510;margin-top:4px;line-height:1.5">'+esc(cp.descr)+'</div>':'')+
-      (cp.code?'<div style="margin-top:7px;background:#fff;border-radius:8px;padding:7px 10px;font-family:monospace;font-weight:900;font-size:14px;color:#243c40;text-align:center;letter-spacing:.12em">'+esc(cp.code)+'</div><div style="font-size:10px;color:#9a7a3a;text-align:center;margin-top:3px">방문 시 이 코드를 보여주세요</div>':'')+
+      (cp.code?'<div style="margin-top:7px;background:#fff;border-radius:8px;padding:7px 10px;font-family:monospace;font-weight:900;font-size:14px;color:#243c40;text-align:center;letter-spacing:.12em'+(cp.used?';text-decoration:line-through;color:#999':'')+'">'+esc(cp.code)+'</div>'+(cp.used?'':'<div style="font-size:10px;color:#9a7a3a;text-align:center;margin-top:3px">방문 시 이 코드를 보여주세요</div>'):'')+
+      (cp.used?'':'<button class="btn btn-gold" style="width:100%;margin-top:9px;padding:7px;font-size:12px" onclick="useMyCoupon('+cp.id+')">✔ 사용하기</button>')+
       '</div>').join('')
     :'<div style="color:var(--sub);font-size:12px;margin-top:6px">아직 받은 쿠폰이 없어요. 제휴업체 예약 시 쿠폰 선물이 도착할 수 있어요!</div>')+'</div>';
   })()+
@@ -906,7 +917,7 @@ async function renderPartner(){
   $('main').innerHTML=
   '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>⭐ 제휴업체 ⭐</h2><small>회원 혜택이 있는 검증 업체</small></div>'+
   '<div class="chiprow">'+PCATS.map(c=>'<button class="chip'+(pFilter===c[0]?' on':'')+'" onclick="pFilter=\''+c[0]+'\';renderPartner()">'+c[2]+' '+c[1]+'</button>').join('')+'</div>'+
-  '<button class="btn btn-gold" onclick="partnerForm()">＋ 제휴업체 등록</button><div id="pFormBox"></div></div>'+
+  '<div style="font-size:11.5px;color:var(--sub);padding:4px 2px">제휴업체 입점 문의는 운영자에게 연락해주세요.</div></div>'+
   '<div class="pgrid">'+
   (list.length?list.map(p=>
     '<div class="pcard">'+
@@ -917,7 +928,7 @@ async function renderPartner(){
     (p.desc?'<br>'+esc(p.desc):'')+'</div>'+
     (p.soon?'<div class="pbtn" style="background:var(--panel2);color:var(--sub);cursor:default">🔜 오픈 준비 중 · 커밍순</div>'
       :(p.link?'<a class="pbtn" data-pn="'+esc(p.name)+'" onclick="logBook(this.dataset.pn)" target="_blank" rel="noopener" href="'+esc(p.link)+'">예약 · 문의하기</a>':''))+
-    (p.author===me?'<button class="btn btn-red btn-sm" style="margin-top:8px;width:100%" onclick="delItem(\'tl_partner\','+p.ts+',renderPartner)">삭제</button>':'')+
+    ''+
     '</div></div>').join(''):'<div class="empty" style="grid-column:1/-1">해당 카테고리 제휴업체가 없습니다.</div>')+
   '</div>';
 }

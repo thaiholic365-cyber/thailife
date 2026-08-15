@@ -748,10 +748,10 @@ function setSection(s){
   else if(s==='osm'){ if(!OSMI._inited){ OSMI.init(); OSMI._inited=true; } }
   else setTimeout(()=>pickmap&&pickmap.invalidateSize(),150);
 }
-function commTab(t){
+async function commTab(t){
   curCommTab=t;
   ['stats','members','content','chat','coupon','support'].forEach(x=>document.getElementById('ct-'+x).classList.toggle('on',x===t));
-  ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,support:renderSupportAdmin})[t]();
+  await ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,support:renderSupportAdmin})[t]();
 }
 
 /* --- 통계 --- */
@@ -939,7 +939,7 @@ const CREGIONS_A=['방콕','파타야','치앙마이','치앙라이','빠이','�
 const PCATS_A=[['club','🎧 클럽'],['lounge','🍸 라운지'],['bnb','🏠 에어비앤비·숙소'],['rest','🍽 식당'],['bar','🍺 술집'],['night','🌙 나이트라이프'],['spa','💆 마사지·스파'],['etc','✨ 기타']];
 const GCATS_A=[['night','🌙 나이트라이프'],['sight','🛕 관광지'],['spot','📸 명소'],['food','🍜 맛집'],['coffee','☕ 커피'],['spa','💆 마사지·스파'],['etc','✨ 기타']];
 
-function renderContent(){
+async function renderContent(){
   const list=cS(CKEYS[contentBoard],[]);
   const foodForm=contentBoard!=='food'?'':
   '<div style="background:var(--panel2);border:1px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:14px">'+
@@ -959,6 +959,19 @@ function renderContent(){
   '<label>사진 설명</label><input id="agCap" maxlength="60" placeholder="예: 왓아룬 야경 🌙">'+
   '<div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="saveAdminGallery()">📷 사진 게시</button></div></div>';
 
+  const partnerForm=contentBoard!=='partner'?'':
+  '<div style="background:var(--panel2);border:1px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:14px">'+
+  '<b style="font-size:13.5px;color:var(--gold)">⭐ 제휴업체 등록 (관리자 전용)</b>'+
+  '<div class="row2"><div><label>카테고리</label><select id="apCat">'+PCATS_A.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></div>'+
+  '<div><label>지역</label><select id="apRegion">'+CREGIONS_A.map(r=>'<option>'+r+'</option>').join('')+'</select></div></div>'+
+  '<label>업체명 *</label><input id="apTitle" placeholder="예: 방콕 스카이바">'+
+  '<label>회원 혜택</label><input id="apBenefit" placeholder="예: 입장료 20% 할인">'+
+  '<label>소개</label><textarea id="apDesc" style="min-height:60px" placeholder="업체 소개, 위치, 영업시간 등"></textarea>'+
+  '<label>예약·문의 링크 (지도/LINE/tel 등)</label><input id="apLink" placeholder="https://… 또는 tel:+66…">'+
+  '<label>대표 이미지 (선택, 자동 압축)</label><input type="file" accept="image/*" id="apFile" style="padding:8px;font-size:12px">'+
+  '<label style="margin-top:10px"><input type="checkbox" id="apSoon" style="width:auto;margin-right:6px">🔜 곧 오픈 예정으로 표시</label>'+
+  '<div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="saveAdminPartner()">⭐ 제휴업체 게시</button></div></div>';
+
   const newsForm=contentBoard!=='news'?'':
   '<div style="background:var(--panel2);border:1px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:14px">'+
   '<b style="font-size:13.5px;color:var(--gold)">📰 뉴스 등록 (관리자 전용)</b>'+
@@ -976,7 +989,7 @@ function renderContent(){
   '<p class="hint" style="margin-bottom:10px">모든 게시판의 글을 수정·삭제할 수 있습니다. 수정에서 사진 교체/제거, 링크 변경이 가능합니다.</p>'+
   '<div class="tabs" style="margin-bottom:12px">'+
   Object.keys(CKEYS).map(k=>'<button class="tab'+(contentBoard===k?' on':'')+'" onclick="contentBoard=\''+k+'\';editingTs=null;renderContent()">'+CLB[k]+'<span class="n">'+cS(CKEYS[k],[]).length+'</span></button>').join('')+
-  '</div>'+newsForm+foodForm+galleryForm+
+  '</div>'+newsForm+foodForm+galleryForm+partnerForm+
   (list.length?list.map(p=>{
     if(p.ts===editingTs) return editFormHtml(p);
     const title=p.title||p.name||p.cap||'(제목 없음)';
@@ -1115,51 +1128,82 @@ function attachNewsPaste(){
     }
   });
 }
-function saveAdminFood(){
+async function saveAdminFood(){
   const t=document.getElementById('afTitle').value.trim();
   if(!t){ alert('가게 이름을 입력해주세요.'); return; }
-  const a=cS('tl_food',[]);
-  a.unshift({ts:Date.now(),title:t,region:document.getElementById('afRegion').value,
-    price:document.getElementById('afPrice').value.trim(),
-    body:document.getElementById('afBody').value.trim(),
-    map:normL(document.getElementById('afLink').value),author:'관리자'});
-  cSS('tl_food',a); toast('맛집이 게시되었습니다 🍜'); renderContent();
+  try{
+    await TL.postAdd('food',{title:t,region:document.getElementById('afRegion').value,
+      price:document.getElementById('afPrice').value.trim(),
+      body:document.getElementById('afBody').value.trim(),
+      map:normL(document.getElementById('afLink').value),_asAdmin:true});
+    toast('맛집이 게시되었습니다 🍜'); await reloadBoard('food'); renderContent();
+  }catch(e){ alert(e.message); }
 }
-function saveAdminGallery(){
+async function saveAdminGallery(){
   const f=document.getElementById('agFile').files[0];
   if(!f){ alert('사진을 선택해주세요.'); return; }
-  compressImageA(f,data=>{
-    const a=cS('tl_gallery',[]);
-    a.unshift({ts:Date.now(),img:data,cap:document.getElementById('agCap').value.trim(),
-      cat:document.getElementById('agCat').value,author:'관리자'});
-    try{ cSS('tl_gallery',a.slice(0,60)); toast('사진이 게시되었습니다 📷'); renderContent(); }
-    catch(err){ alert('저장 공간이 부족합니다. 작은 이미지를 사용하거나 오래된 사진을 지워주세요.'); }
-  });
+  toast('업로드 중…');
+  try{
+    const url=await TL.uploadImage(f,'gallery');
+    await TL.postAdd('gallery',{img:url,title:document.getElementById('agCap').value.trim(),
+      cat:document.getElementById('agCat').value,_asAdmin:true});
+    toast('사진이 게시되었습니다 📷'); await reloadBoard('gallery'); renderContent();
+  }catch(e){ alert(e.message); }
 }
-function saveAdminNews(){
+async function saveAdminNews(){
   let title=document.getElementById('anTitle').value.trim();
-  let body=document.getElementById('anBody').value.replace(/\r\n/g,'\n').trim();
+  let body=document.getElementById('anBody').value.trim();
   if(!title&&body){
-    const lines=body.split('\n');
+    const lines=body.split(String.fromCharCode(10));
     title=lines.shift().trim().slice(0,80);
-    body=lines.join('\n').replace(/^\n+/,'');
+    body=lines.join(String.fromCharCode(10)).replace(/^\s+/,'');
   }
   if(!title){ alert('제목을 입력하거나 본문을 붙여넣어주세요.'); return; }
   let link=document.getElementById('anLink').value.trim();
   if(link&&!/^https?:/.test(link)) link='https://'+link;
   const f=document.getElementById('anImg').files[0];
-  const done=img=>{
-    const a=cS('tl_news',[]);
-    a.unshift({ts:Date.now(),title,body,link,img:img||_anPasteImg||'',author:'관리자'});
-    try{ cSS('tl_news',a); _anPasteImg=''; toast('뉴스가 게시되었습니다 📰'); renderContent(); }
-    catch(err){ alert('저장 공간이 부족합니다. 이미지 크기를 줄여주세요.'); }
-  };
-  if(f) compressImageA(f,done); else done('');
+  try{
+    let img=_anPasteImg||'';
+    if(f) img=await TL.uploadImage(f,'news');
+    await TL.postAdd('news',{title,body,link,img,_asAdmin:true});
+    _anPasteImg=''; toast('뉴스가 게시되었습니다 📰'); await reloadBoard('news'); renderContent();
+  }catch(e){ alert(e.message); }
 }
-function delContent(ts){
+async function delContent(ts){
   if(!confirm('이 게시글을 삭제할까요?')) return;
-  cSS(CKEYS[contentBoard], cS(CKEYS[contentBoard],[]).filter(p=>p.ts!==ts));
-  toast('삭제되었습니다'); renderContent();
+  const p=cS(CKEYS[contentBoard],[]).find(x=>x.ts===ts);
+  try{
+    if(p&&p.id!=null) await TL.postDelete(p.id);
+    toast('삭제되었습니다'); await reloadBoard(contentBoard); renderContent();
+  }catch(e){ alert(e.message); }
+}
+
+
+async function saveAdminPartner(){
+  const t=document.getElementById('apTitle').value.trim();
+  if(!t){ alert('업체명을 입력해주세요.'); return; }
+  let link=document.getElementById('apLink').value.trim();
+  if(link&&!/^(https?:|tel:)/.test(link)) link='https://'+link;
+  const f=document.getElementById('apFile').files[0];
+  try{
+    let img='';
+    if(f) img=await TL.uploadImage(f,'partner');
+    await TL.postAdd('partner',{title:t,cat:document.getElementById('apCat').value,
+      region:document.getElementById('apRegion').value,
+      benefit:document.getElementById('apBenefit').value.trim(),
+      body:document.getElementById('apDesc').value.trim(),link,img,
+      soon:document.getElementById('apSoon').checked,_asAdmin:true});
+    toast('제휴업체가 등록되었습니다 ⭐'); await reloadBoard('partner'); renderContent();
+  }catch(e){ alert(e.message); }
+}
+/* 특정 게시판을 서버에서 다시 로드해 캐시 갱신 */
+async function reloadBoard(board){
+  try{
+    _cache['tl_'+board]=(await TL.posts(board)).map(p=>({id:p.id,ts:new Date(p.created_at).getTime(),
+      title:p.title,name:p.title,cap:p.title,body:p.body,desc:p.body,author:p.author,
+      region:p.region,cat:p.cat,kind:p.kind,date:p.date,time:p.time,place:p.place,
+      price:p.price,link:p.link,map:p.map,img:p.img,benefit:p.benefit,soon:p.soon,joiners:p.joiners||[]}));
+  }catch(e){ console.error(e); }
 }
 
 /* --- 쿠폰 · 알림 --- */
@@ -1170,10 +1214,18 @@ function pushNotifA(target,icon,title,body){
   cSS('tl_notifs',all);
 }
 function genCode(){ document.getElementById('cpCode').value=randCode(); }
-function renderCouponAdmin(){
+async function renderCouponAdmin(){
   const users=Object.keys(cS('tl_users',{}));
-  const partners=cS('tl_partner',[]).map(p=>p.name);
+  // 서버에서 최신 제휴업체 목록 로드 (name 또는 title 대응)
+  let partners=[];
+  try{
+    const rows=await TL.posts('partner');
+    partners=rows.map(p=>p.title||p.name).filter(Boolean);
+    _cache.tl_partner=rows.map(p=>({name:p.title||p.name}));
+  }catch(e){ partners=(cS('tl_partner',[])||[]).map(p=>p.name||p.title).filter(Boolean); }
   const adminNotifs=(cS('tl_notifs',{})['@admin']||[]).slice().reverse().slice(0,15);
+  let coupons=[];
+  try{ coupons=await TL.allCoupons(); }catch(e){ coupons=[]; }
   const uSel=id=>'<select id="'+id+'"><option value="@all">📣 전체 회원 ('+users.length+'명)</option>'+users.map(u=>'<option value="'+esc2(u)+'">'+esc2(u)+'</option>').join('')+'</select>';
 
   document.getElementById('commBody').innerHTML=
@@ -1212,14 +1264,45 @@ function renderCouponAdmin(){
     '<small style="color:var(--sub)">'+ago(x.ts)+'</small></div>'+
     '<div class="item-tip">'+esc2(x.body||'')+'</div></div>').join('')+
     '<button class="btn btn-line btn-sm" style="margin-top:8px" onclick="clearAdminInbox()">수신함 비우기</button>'
-  :'<div class="empty" style="padding:18px">아직 수신된 소식이 없습니다.<br>회원이 제휴업체 예약 링크를 누르거나 가입하면 여기에 표시됩니다.</div>')+'</div>';
+  :'<div class="empty" style="padding:18px">아직 수신된 소식이 없습니다.<br>회원이 제휴업체 예약 링크를 누르거나 가입하면 여기에 표시됩니다.</div>')+'</div>'+
+
+  /* 발송 쿠폰 현황 · 사용 관리 */
+  '<div style="margin-top:20px"><h3 style="font-size:14px;margin-bottom:4px">🎟 발송 쿠폰 현황</h3>'+
+  '<p class="hint" style="margin-bottom:8px">발송한 쿠폰의 사용 여부를 확인하고, 오프라인에서 사용을 처리할 수 있습니다.</p>'+
+  (function(){
+    if(!coupons.length) return '<div class="empty" style="padding:18px">아직 발송한 쿠폰이 없습니다.</div>';
+    const total=coupons.length, usedN=coupons.filter(c=>c.used).length;
+    return '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+      '<span class="pill" style="background:var(--panel2);border:1px solid var(--line);padding:5px 11px;border-radius:20px;font-size:12px">전체 <b>'+total+'</b></span>'+
+      '<span class="pill" style="background:#25402c;border:1px solid var(--green);color:#9fe0b0;padding:5px 11px;border-radius:20px;font-size:12px">사용완료 <b>'+usedN+'</b></span>'+
+      '<span class="pill" style="background:var(--panel2);border:1px solid var(--gold);color:var(--gold);padding:5px 11px;border-radius:20px;font-size:12px">미사용 <b>'+(total-usedN)+'</b></span></div>'+
+      coupons.map(c=>{
+        const dt=new Date(c.created_at); const when=(dt.getMonth()+1)+'/'+dt.getDate();
+        return '<div class="item" style="'+(c.used?'opacity:.6;border-left-color:var(--green)':'border-left-color:var(--gold)')+'">'+
+        '<div class="item-top"><div class="item-name" style="font-size:13px">'+(c.used?'✅ ':'🎟 ')+esc2(c.title)+'</div>'+
+        '<small style="color:var(--sub)">'+when+'</small></div>'+
+        '<div class="item-meta" style="font-size:11.5px;color:var(--sub);margin:3px 0">👤 '+esc2(c.nick)+(c.partner?' · 🏪 '+esc2(c.partner):'')+(c.code?' · <span style="font-family:monospace;color:var(--gold)">'+esc2(c.code)+'</span>':'')+'</div>'+
+        (c.descr?'<div class="item-tip" style="font-size:11.5px">'+esc2(c.descr)+'</div>':'')+
+        '<div class="item-btns" style="margin-top:8px">'+
+        (c.used
+          ? '<span style="font-size:11.5px;color:var(--green);font-weight:700">사용완료</span> <button class="btn btn-line btn-sm" onclick="toggleCoupon('+c.id+',false)">사용취소</button>'
+          : '<button class="btn btn-gold btn-sm" onclick="toggleCoupon('+c.id+',true)">✔ 사용 확인 처리</button>')+
+        '</div></div>';
+      }).join('');
+  })()+'</div>';
+}
+/* 쿠폰 사용 여부 토글 (관리자) */
+async function toggleCoupon(id,used){
+  if(used && !confirm('이 쿠폰을 사용완료로 처리할까요?')) return;
+  try{ await TL.setCouponUsed(id,used); toast(used?'사용 처리했습니다':'사용취소했습니다'); await renderCouponAdmin(); }
+  catch(e){ alert(e.message); }
 }
 function randCode(){
   const s='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let r='TL-';
   for(let i=0;i<6;i++) r+=s[Math.floor(Math.random()*s.length)];
   return r;
 }
-function sendCoupon(){
+async function sendCoupon(){
   const target=document.getElementById('cpUser').value;
   const title=document.getElementById('cpTitle').value.trim();
   if(!title){ alert('쿠폰명을 입력해주세요.'); return; }
@@ -1231,19 +1314,16 @@ function sendCoupon(){
   const targets=target==='@all'?users:[target];
   if(!targets.length){ alert('발송할 회원이 없습니다.'); return; }
   if(target==='@all' && !confirm('전체 회원 '+targets.length+'명에게 "'+title+'" 쿠폰을 보낼까요?')) return;
-
-  const all=cS('tl_coupons',{});
-  const t=Date.now();
-  targets.forEach((nick,i)=>{
-    const code=(targets.length>1&&uniq)?randCode():baseCode;
-    (all[nick]=all[nick]||[]).push({id:'c'+(t+i),ts:t+i,title,partner,desc,code});
-    pushNotifA(nick,'🎟','쿠폰 선물이 도착했어요!','"'+title+'"'+(partner?' — '+partner:'')+'\n프로필(닉네임 클릭) → 내 쿠폰함에서 확인하세요!');
-  });
-  try{ cSS('tl_coupons',all); }
-  catch(e){ alert('저장 공간이 부족합니다.'); return; }
-  document.getElementById('cpTitle').value=''; document.getElementById('cpDesc').value=''; document.getElementById('cpCode').value='';
-  toast(targets.length>1?targets.length+'명에게 쿠폰을 발송했습니다 🎁':targets[0]+' 님에게 쿠폰을 보냈습니다 🎁');
-  renderCouponAdmin();
+  toast('발송 중…');
+  try{
+    for(let i=0;i<targets.length;i++){
+      const code=(targets.length>1&&uniq)?randCode():baseCode;
+      await TL.couponSend(targets[i],{title,partner,descr:desc,code});
+    }
+    document.getElementById('cpTitle').value=''; document.getElementById('cpDesc').value=''; document.getElementById('cpCode').value='';
+    toast(targets.length>1?targets.length+'명에게 쿠폰을 발송했습니다 🎁':targets[0]+' 님에게 쿠폰을 보냈습니다 🎁');
+    await renderCouponAdmin();
+  }catch(e){ alert('발송 실패: '+e.message); }
 }
 function sendNotifA(){
   const target=document.getElementById('ntTarget').value;

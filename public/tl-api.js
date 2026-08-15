@@ -210,6 +210,21 @@ const TL = {
     await this.notifSend(nick, '🎟', '쿠폰 선물이 도착했어요!',
       `"${title}"${partner ? ' — ' + partner : ''}\n프로필 → 내 쿠폰함에서 확인하세요!`);
   },
+  // 관리자: 발송된 모든 쿠폰 조회
+  async allCoupons() {
+    const { data } = await sb.from('coupons').select('*').order('created_at', { ascending: false });
+    return data || [];
+  },
+  // 회원이 자기 쿠폰을 사용 처리
+  async useCoupon(id) {
+    const { error } = await sb.from('coupons').update({ used: true }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  // 관리자: 사용 여부 토글 (사용확인/취소)
+  async setCouponUsed(id, used) {
+    const { error } = await sb.from('coupons').update({ used }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
 
   /* ---------- 설정 ---------- */
   async getSetting(key, def = null) {
