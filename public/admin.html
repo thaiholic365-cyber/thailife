@@ -1067,36 +1067,40 @@ function clearEditImg(){
 function normL(v){ v=(v||'').trim(); if(v&&!/^(https?:|tel:)/.test(v)) v='https://'+v; return v; }
 function gv(id){ const el=document.getElementById(id); return el?el.value:''; }
 
-function saveEditContent(){
+async function saveEditContent(){
   const arr=cS(CKEYS[contentBoard],[]);
   const p=arr.find(x=>x.ts===editingTs); if(!p){ cancelEdit(); return; }
+  if(p.id==null){ alert('이 게시글은 서버에 저장되지 않은 항목이라 수정할 수 없습니다.'); return; }
+  const patch={};
   if(contentBoard==='meet'){
     const t=gv('ecTitle').trim(), d=gv('ecDate');
     if(!t||!d){ alert('제목과 날짜를 입력해주세요.'); return; }
-    p.kind=gv('ecKind'); p.region=gv('ecRegion'); p.title=t; p.date=d;
-    p.time=gv('ecTime'); p.place=gv('ecPlace').trim(); p.desc=gv('ecDesc').trim();
+    patch.kind=gv('ecKind'); patch.region=gv('ecRegion'); patch.title=t; patch.date=d;
+    patch.time=gv('ecTime'); patch.place=gv('ecPlace').trim(); patch.body=gv('ecDesc').trim();
   } else if(contentBoard==='news'){
     const t=gv('ecTitle').trim(); if(!t){ alert('제목을 입력해주세요.'); return; }
-    p.title=t; p.body=gv('ecBody').replace(/\r\n/g,'\n'); p.link=normL(gv('ecLink'));
-    if(_editImg!==undefined) p.img=_editImg;
+    patch.title=t; patch.body=gv('ecBody').replace(/\r\n/g,'\n'); patch.link=normL(gv('ecLink'));
+    if(_editImg!==undefined && _editImg!=='') patch.img=_editImg;
   } else if(contentBoard==='food'){
     const t=gv('ecTitle').trim(); if(!t){ alert('가게 이름을 입력해주세요.'); return; }
-    p.title=t; p.region=gv('ecRegion'); p.price=gv('ecPrice').trim();
-    p.body=gv('ecBody').trim(); p.map=normL(gv('ecLink'));
+    patch.title=t; patch.region=gv('ecRegion'); patch.price=gv('ecPrice').trim();
+    patch.body=gv('ecBody').trim(); patch.map=normL(gv('ecLink'));
   } else if(contentBoard==='partner'){
     const t=gv('ecTitle').trim(); if(!t){ alert('업체명을 입력해주세요.'); return; }
-    p.name=t; p.cat=gv('ecCat'); p.region=gv('ecRegion');
-    p.benefit=gv('ecBenefit').trim(); p.desc=gv('ecDesc').trim(); p.link=normL(gv('ecLink'));
-    p.soon=document.getElementById('ecSoon').checked;
-    if(_editImg!==undefined) p.img=_editImg;
+    patch.title=t; patch.cat=gv('ecCat'); patch.region=gv('ecRegion');
+    patch.benefit=gv('ecBenefit').trim(); patch.body=gv('ecDesc').trim(); patch.link=normL(gv('ecLink'));
+    patch.soon=document.getElementById('ecSoon').checked;
+    if(_editImg!==undefined && _editImg!=='') patch.img=_editImg;
   } else if(contentBoard==='gallery'){
-    const finalImg=_editImg!==undefined?_editImg:p.img;
-    if(!finalImg){ alert('갤러리 사진은 이미지가 필요합니다. 교체할 이미지를 선택해주세요.'); return; }
-    p.cap=gv('ecTitle').trim(); p.cat=gv('ecCat'); p.img=finalImg;
+    patch.title=gv('ecTitle').trim(); patch.cat=gv('ecCat');
+    if(_editImg!==undefined && _editImg!=='') patch.img=_editImg;
   }
-  try{ cSS(CKEYS[contentBoard],arr); }catch(e){ alert('저장 공간이 부족합니다. 이미지 크기를 줄여주세요.'); return; }
-  editingTs=null; _editImg=undefined;
-  toast('수정되었습니다 ✏️'); renderContent();
+  try{
+    await TL.postUpdate(p.id, patch);
+    editingTs=null; _editImg=undefined;
+    toast('수정되었습니다 ✏️');
+    await reloadBoard(contentBoard); renderContent();
+  }catch(e){ alert('수정 실패: '+e.message); }
 }
 
 let _anPasteImg='';
@@ -1908,23 +1912,40 @@ function exportJSON(){
 }
 function importJSON(inp){
   const f=inp.files[0]; if(!f) return;
+  if(!/\.json$/i.test(f.name) && f.type && f.type.indexOf('json')<0){
+    if(!confirm('".json" 파일이 아닌 것 같습니다 ('+f.name+').\n그래도 열어볼까요?')){ inp.value=''; return; }
+  }
   const rd=new FileReader();
   rd.onload=e=>{
+    let txt=e.target.result;
+    if(typeof txt==='string') txt=txt.replace(/^\uFEFF/,'').trim();  // BOM/공백 제거
+    if(!txt){ alert('파일이 비어 있습니다.'); inp.value=''; return; }
+    let j;
+    try{ j=JSON.parse(txt); }
+    catch(err){
+      alert('JSON을 읽을 수 없습니다.\n\n원인: '+err.message+'\n\n파일 앞부분: '+txt.slice(0,60));
+      inp.value=''; return;
+    }
     try{
-      const j=JSON.parse(e.target.result);
-      if(Array.isArray(j)){ // 구버전 형식
+      let n=0;
+      if(Array.isArray(j)){
         if(confirm('기존 데이터에 '+j.length+'건을 추가할까요?\n(취소 시 전체 교체)')) save(load().concat(j)); else save(j);
-      } else {
-        if(j.places) save(j.places);
+        n=j.length;
+      } else if(j && typeof j==='object'){
+        if(j.places){ save(load().concat(j.places)); n=j.places.length; }
         if(j.bookings) saveBk(j.bookings);
         if(j.contact){ const s=_cache.tl_support||{}; s.defaultContact=j.contact; cSS('tl_support',s); svSupport(s); }
         if(j.hidden) saveHidden(j.hidden);
         if(j.community) for(const k in j.community){ if(j.community[k]!=null) cSS(k,j.community[k]); }
+      } else {
+        alert('인식할 수 없는 형식입니다. (배열 또는 객체가 아님)'); inp.value=''; return;
       }
-      renderTabs(); renderList(); renderBkList(); toast('불러오기 완료');
-    }catch(err){ alert('올바른 JSON 파일이 아닙니다.'); }
+      renderTabs(); renderList(); if(typeof renderBkList==='function') renderBkList();
+      toast(n?n+'곳을 불러왔습니다 ✅':'불러오기 완료');
+    }catch(err){ alert('불러오기 처리 중 오류: '+err.message); }
     inp.value='';
   };
+  rd.onerror=()=>{ alert('파일을 읽지 못했습니다. 다시 시도해주세요.'); inp.value=''; };
   rd.readAsText(f);
 }
 
