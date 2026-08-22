@@ -494,6 +494,14 @@ window.__bootTL = function(startFn){
 let PLACES=[], HIDDEN=[], BOOKINGS={};
 const _cache={};
 function cS(k,d){ return _cache[k]!==undefined?_cache[k]:d; }
+function cSS(k,v){
+  _cache[k]=v;
+  // 서버에 저장해야 하는 설정성 키는 자동 반영
+  try{
+    if(k==='tl_support') pushSetting('support',v);
+    else if(k==='tl_banned') pushSetting('banned',v);
+  }catch(e){}
+}
 async function pushSetting(k,v){ try{ await TL.setSetting(k,v); }catch(e){ alert('저장 실패: '+e.message); } }
 async function svSupport(o){ await pushSetting('support',o); }
 async function svBanned(l){ await pushSetting('banned',l); }
