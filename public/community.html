@@ -224,7 +224,7 @@ body{background:
 
 /* ===== 제휴업체 사이드 배너 ===== */
 .sidebanner{position:fixed;top:50%;transform:translateY(-50%);width:132px;z-index:900;
-  display:flex;flex-direction:column;gap:10px;max-height:90vh;overflow-y:auto}
+  display:flex;flex-direction:column;gap:10px}
 .sidebanner.left{left:16px}
 .sidebanner.right{right:16px}
 .sb-main{text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border-radius:16px;
@@ -960,7 +960,7 @@ async function loadFeaturedBanners(){
   let feat=[];
   try{
     const all=await TL.posts('partner');
-    feat=all.filter(p=>p.kind==='featured' && !p.soon).slice(0,4);
+    feat=all.filter(p=>p.kind && p.kind.indexOf('featured')===0 && !p.soon);
   }catch(e){ return; }
   const catEmoji=c=>({night:'🌙',bar:'🍸',club:'🎧',spa:'💆',sight:'🛕',food:'🍜',coffee:'☕',stay:'🏨'}[c]||'🏪');
   const cardHtml=p=>{
@@ -975,15 +975,20 @@ async function loadFeaturedBanners(){
       (p.benefit?'<span class="adbenefit">🎁 '+esc(p.benefit)+'</span>':'')+
       '</div></a>';
   };
-  const html=feat.map(cardHtml).join('');
-  // 좌우 분배 (홀수는 왼쪽, 짝수는 오른쪽)
-  const leftHtml=feat.filter((_,i)=>i%2===0).map(cardHtml).join('');
-  const rightHtml=feat.filter((_,i)=>i%2===1).map(cardHtml).join('');
-  const fl=document.getElementById('featLeft'); if(fl) fl.innerHTML=leftHtml;
-  const fr=document.getElementById('featRight'); if(fr) fr.innerHTML=rightHtml;
-  // 모바일 상단용 저장
-  window._featTop=feat.map(cardHtml).join('');
+  // 위치별 분배: 왼쪽 / 오른쪽 (featured=구버전은 왼쪽)
+  const leftList=feat.filter(p=>p.kind==='featured-left'||p.kind==='featured').slice(0,5);
+  const rightList=feat.filter(p=>p.kind==='featured-right').slice(0,5);
+  const fl=document.getElementById('featLeft'); if(fl) fl.innerHTML=leftList.map(cardHtml).join('');
+  const fr=document.getElementById('featRight'); if(fr) fr.innerHTML=rightList.map(cardHtml).join('');
+  // 모바일 상단: 왼쪽+오른쪽 전부
+  window._featTop=leftList.concat(rightList).map(cardHtml).join('');
   const mt=document.getElementById('featTop'); if(mt) mt.innerHTML=window._featTop;
+  // 배너가 없으면 컨테이너 숨김 처리를 위해 클래스 토글
+  document.querySelectorAll('.sidebanner').forEach(el=>{
+    const hasAd=el.querySelector('.sb-ad');
+    el.style.top=hasAd?'72px':'50%';
+    el.style.transform=hasAd?'none':'translateY(-50%)';
+  });
 }
 
 async function renderPartner(){
