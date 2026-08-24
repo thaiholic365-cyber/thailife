@@ -519,18 +519,22 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
 
 // region chips
 const regionRow=document.getElementById('regionRow');
-DATA.forEach((rg,i)=>{
-  const b=document.createElement('button');
-  b.className='chip'+(i===0?' on':'');
-  b.innerHTML=rg.name+'<span class="cnt">'+rg.places.length+'</span>';
-  b.onclick=()=>{
-    curRegion=rg; curCat='all'; curZone='all';
-    regionRow.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');
-    renderCats(); renderZones(); render(true);
-  };
-  regionRow.appendChild(b);
-});
+function renderRegionChips(){
+  regionRow.innerHTML='';
+  DATA.forEach((rg,i)=>{
+    const b=document.createElement('button');
+    b.className='chip'+(rg===curRegion?' on':'');
+    b.innerHTML=rg.name+'<span class="cnt">'+rg.places.length+'</span>';
+    b.onclick=()=>{
+      curRegion=rg; curCat='all'; curZone='all';
+      regionRow.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      renderCats(); renderZones(); render(true);
+    };
+    regionRow.appendChild(b);
+  });
+}
+renderRegionChips();
 
 // 하부 카테고리 카드 렌더링
 let curZone='all';
@@ -627,6 +631,7 @@ function render(flyTo){
 if(window.self!==window.top) document.body.classList.add('embed');
 function startMap(){ (async function(){
   await loadAdminPlaces();
+  renderRegionChips();
   renderCats();
   renderZones();
   render(true);
