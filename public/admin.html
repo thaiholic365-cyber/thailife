@@ -978,6 +978,7 @@ async function renderContent(){
   '<label>예약·문의 링크 (지도/LINE/tel 등)</label><input id="apLink" placeholder="https://… 또는 tel:+66…">'+
   '<label>대표 이미지 (선택, 자동 압축)</label><input type="file" accept="image/*" id="apFile" style="padding:8px;font-size:12px">'+
   '<label style="margin-top:10px"><input type="checkbox" id="apSoon" style="width:auto;margin-right:6px">🔜 곧 오픈 예정으로 표시</label>'+
+  '<label style="margin-top:6px;background:#2a2410;border:1px solid var(--gold);border-radius:8px;padding:9px 11px;display:block"><input type="checkbox" id="apFeatured" style="width:auto;margin-right:6px">📢 <b style="color:var(--gold)">메인 배너에 노출</b> (홍보 · 홈 화면 배너 아래 바로가기 표시)</label>'+
   '<div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="saveAdminPartner()">⭐ 제휴업체 게시</button></div></div>';
 
   const newsForm=contentBoard!=='news'?'':
@@ -1005,10 +1006,11 @@ async function renderContent(){
     const linkTxt=p.link||p.map||'';
     return '<div class="item"><div style="display:flex;gap:11px;align-items:flex-start">'+thumb+'<div style="flex:1;min-width:0">'+
     '<div class="item-top"><div class="item-name">'+esc2(title)+'</div></div>'+
-    '<div class="item-meta">'+esc2(p.author||'')+' · '+ago(p.ts)+(p.region?' · '+esc2(p.region):'')+(p.kind?' · '+esc2(p.kind):'')+(p.date?' · 🗓 '+esc2(p.date):'')+(contentBoard==='partner'&&p.soon?' · 🔜 오픈예정':'')+(contentBoard==='gallery'&&p.cat?' · 📷 '+({night:'나이트라이프',sight:'관광지',spot:'명소',food:'맛집',coffee:'커피',spa:'마사지·스파',etc:'기타'}[p.cat]||p.cat):'')+'</div>'+
+    '<div class="item-meta">'+esc2(p.author||'')+' · '+ago(p.ts)+(p.region?' · '+esc2(p.region):'')+(p.kind&&p.kind!=='featured'?' · '+esc2(p.kind):'')+(contentBoard==='partner'&&p.kind==='featured'?' · <b style="color:var(--gold)">📢 메인배너</b>':'')+(p.date?' · 🗓 '+esc2(p.date):'')+(contentBoard==='partner'&&p.soon?' · 🔜 오픈예정':'')+(contentBoard==='gallery'&&p.cat?' · 📷 '+({night:'나이트라이프',sight:'관광지',spot:'명소',food:'맛집',coffee:'커피',spa:'마사지·스파',etc:'기타'}[p.cat]||p.cat):'')+'</div>'+
     (p.desc||p.body?'<div class="item-tip">'+esc2((p.desc||p.body).slice(0,120))+'</div>':'')+
     (linkTxt?'<div style="font-size:11px;color:var(--sub);word-break:break-all;margin-top:5px">🔗 '+esc2(linkTxt.slice(0,70))+'</div>':'')+
     '<div class="item-btns"><button class="btn btn-line btn-sm" onclick="startEdit('+p.ts+')">✏️ 수정</button>'+
+    (contentBoard==='partner'?'<button class="btn btn-sm" style="'+(p.kind==='featured'?'background:var(--gold);color:#3a2408':'background:var(--panel);border:1px solid var(--gold);color:var(--gold)')+'" onclick="toggleFeatured('+p.ts+')">'+(p.kind==='featured'?'📢 배너해제':'📢 메인배너')+'</button>':'')+
     '<button class="btn btn-red btn-sm" onclick="delContent('+p.ts+')">삭제</button></div>'+
     '</div></div></div>';
   }).join(''):'<div class="empty">게시글이 없습니다.</div>');
@@ -1204,7 +1206,8 @@ async function saveAdminPartner(){
       region:document.getElementById('apRegion').value,
       benefit:document.getElementById('apBenefit').value.trim(),
       body:document.getElementById('apDesc').value.trim(),link,img,
-      soon:document.getElementById('apSoon').checked,_asAdmin:true});
+      soon:document.getElementById('apSoon').checked,
+      kind:document.getElementById('apFeatured').checked?'featured':'',_asAdmin:true});
     toast('제휴업체가 등록되었습니다 ⭐'); await reloadBoard('partner'); renderContent();
   }catch(e){ alert(e.message); }
 }
@@ -1304,6 +1307,18 @@ async function renderCouponAdmin(){
   })()+'</div>';
 }
 /* 쿠폰 사용 여부 토글 (관리자) */
+
+async function toggleFeatured(ts){
+  const p=cS('tl_partner',[]).find(x=>x.ts===ts);
+  if(!p||p.id==null){ alert('서버에 저장된 업체만 배너 지정이 가능합니다.'); return; }
+  const on=p.kind==='featured';
+  try{
+    await TL.postUpdate(p.id,{kind:on?'':'featured'});
+    toast(on?'메인 배너에서 내렸습니다':'메인 배너에 노출합니다 📢');
+    await reloadBoard('partner'); renderContent();
+  }catch(e){ alert(e.message); }
+}
+
 async function toggleCoupon(id,used){
   if(used && !confirm('이 쿠폰을 사용완료로 처리할까요?')) return;
   try{ await TL.setCouponUsed(id,used); toast(used?'사용 처리했습니다':'사용취소했습니다'); await renderCouponAdmin(); }

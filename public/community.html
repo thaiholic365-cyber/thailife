@@ -223,17 +223,28 @@ body{background:
 .lvb.lv5{background:linear-gradient(135deg,#ffe9b8,#ffd47e);color:#7a4a00;border:1px solid #e8b84b;box-shadow:0 0 8px rgba(240,185,90,.35)}
 
 /* ===== 제휴업체 사이드 배너 ===== */
-.sidebanner{position:fixed;top:50%;transform:translateY(-50%);width:120px;z-index:900;text-decoration:none;
-  display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px;border-radius:16px;
-  background:linear-gradient(160deg,#f6ecce,#e6cf8f);border:1px solid var(--gold);
-  box-shadow:0 8px 28px rgba(0,0,0,.28);transition:transform .15s,box-shadow .15s;cursor:pointer}
-.sidebanner:hover{transform:translateY(-50%) scale(1.04);box-shadow:0 12px 34px rgba(0,0,0,.36)}
-.sidebanner .emoji{font-size:34px;line-height:1}
-.sidebanner .t1{font-size:13.5px;font-weight:900;color:#7a4a08;text-align:center;line-height:1.35}
-.sidebanner .t2{font-size:11px;color:#9a7a3a;text-align:center;font-weight:700}
-.sidebanner .go{margin-top:2px;background:var(--gold);color:#3a2408;font-size:11px;font-weight:900;padding:5px 12px;border-radius:999px}
+.sidebanner{position:fixed;top:50%;transform:translateY(-50%);width:132px;z-index:900;
+  display:flex;flex-direction:column;gap:10px;max-height:90vh;overflow-y:auto}
 .sidebanner.left{left:16px}
 .sidebanner.right{right:16px}
+.sb-main{text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 12px;border-radius:16px;
+  background:linear-gradient(160deg,#f6ecce,#e6cf8f);border:1px solid var(--gold);
+  box-shadow:0 8px 28px rgba(0,0,0,.28);transition:transform .15s;cursor:pointer}
+.sb-main:hover{transform:scale(1.04)}
+.sb-main .emoji{font-size:32px;line-height:1}
+.sb-main .t1{font-size:13px;font-weight:900;color:#7a4a08;text-align:center;line-height:1.35}
+.sb-main .t2{font-size:10.5px;color:#9a7a3a;text-align:center;font-weight:700}
+.sb-main .go{margin-top:2px;background:var(--gold);color:#3a2408;font-size:11px;font-weight:900;padding:5px 12px;border-radius:999px}
+.sb-featured{display:flex;flex-direction:column;gap:8px}
+.sb-ad{text-decoration:none;display:block;background:var(--panel);border:1px solid var(--gold);border-radius:13px;
+  overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:transform .15s;cursor:pointer}
+.sb-ad:hover{transform:scale(1.04)}
+.sb-ad .adimg{width:100%;height:66px;object-fit:cover;display:block;background:var(--panel2)}
+.sb-ad .adimg.ph{display:flex;align-items:center;justify-content:center;font-size:26px}
+.sb-ad .adbody{padding:8px 9px}
+.sb-ad .adtag{font-size:9px;font-weight:900;color:#3a2408;background:var(--gold);display:inline-block;padding:1px 6px;border-radius:6px;margin-bottom:4px}
+.sb-ad .adname{font-size:12px;font-weight:900;color:var(--ink);line-height:1.3;display:block}
+.sb-ad .adbenefit{font-size:10px;color:var(--gold);font-weight:700;margin-top:3px;display:block}
 /* 모바일 상단 가로 배너 */
 .topbanner{display:none;text-decoration:none;margin:0 0 14px;padding:14px 16px;border-radius:14px;
   background:linear-gradient(120deg,#f6ecce,#e6cf8f);border:1px solid var(--gold);
@@ -246,22 +257,36 @@ body{background:
 /* 화면이 좁으면 사이드배너 숨기고 상단배너 표시 */
 @media(max-width:1180px){ .sidebanner{display:none} }
 @media(max-width:760px){ .topbanner{display:flex} }
+
+/* 모바일 상단 광고 카드 (가로 스크롤) */
+.feat-top{display:none}
+@media(max-width:760px){
+  .feat-top{display:flex;gap:9px;overflow-x:auto;padding-bottom:8px;margin-bottom:14px;-webkit-overflow-scrolling:touch}
+  .feat-top .sb-ad{flex:0 0 150px;width:150px}
+  .feat-top .sb-ad .adimg{height:80px}
+}
 </style>
 </head>
 <body>
 
-<a class="sidebanner left" onclick="go('partner');return false;" href="#">
-  <div class="emoji">⭐</div>
-  <div class="t1">제휴업체<br>혜택 보기</div>
-  <div class="t2">회원 전용 할인</div>
-  <div class="go">바로가기 →</div>
-</a>
-<a class="sidebanner right" onclick="go('partner');return false;" href="#">
-  <div class="emoji">🎁</div>
-  <div class="t1">예약 · 문의<br>바로가기</div>
-  <div class="t2">검증된 업체만</div>
-  <div class="go">둘러보기 →</div>
-</a>
+<div class="sidebanner left">
+  <a class="sb-main" onclick="go('partner');return false;" href="#">
+    <div class="emoji">⭐</div>
+    <div class="t1">제휴업체<br>혜택 보기</div>
+    <div class="t2">회원 전용 할인</div>
+    <div class="go">바로가기 →</div>
+  </a>
+  <div class="sb-featured" id="featLeft"></div>
+</div>
+<div class="sidebanner right">
+  <a class="sb-main" onclick="go('partner');return false;" href="#">
+    <div class="emoji">🎁</div>
+    <div class="t1">예약 · 문의<br>바로가기</div>
+    <div class="t2">검증된 업체만</div>
+    <div class="go">둘러보기 →</div>
+  </a>
+  <div class="sb-featured" id="featRight"></div>
+</div>
 
 <header>
   <div class="hwrap">
@@ -564,6 +589,7 @@ async function renderHome(){
 
   $('main').innerHTML=
   '<a class="topbanner" onclick="go(\'partner\');return false;" href="#"><div class="emoji">⭐</div><div class="txt"><b>제휴업체 혜택 보기</b><span>회원 전용 할인 · 검증된 업체만 모았어요</span></div><div class="go">바로가기 →</div></a>'+
+  '<div id="featTop" class="feat-top">'+(window._featTop||'')+'</div>'+
   '<div class="hero"><div class="eyebrow">THAI LIFE COMMUNITY</div>'+
   '<h1>태국에서의 모든 순간,<br><em>타이라이프</em>에서 함께</h1>'+
   '<p>실시간 채팅으로 소통하고, 정모·번개로 만나고, 검증된 맛집과 나이트라이프 정보를 나누는 태국 한인 커뮤니티입니다.</p></div>'+
@@ -930,32 +956,38 @@ async function saveFood(){
 /* ============ 제휴업체 ============ */
 const PCATS=[['all','전체','📋'],['club','클럽','🎧'],['lounge','라운지','🍸'],['bnb','에어비앤비·숙소','🏠'],['rest','식당','🍽'],['bar','술집','🍺'],['night','나이트라이프','🌙'],['spa','마사지·스파','💆'],['etc','기타','✨']];
 let pFilter='all';
-function partnerSeed(){
-  if(S('tl_partner_seeded_v2',false)) return;
-  // 기존 예시 데이터 제거 후 실제 제휴업체 추가
-  const keep=S('tl_partner',[]).filter(p=>!String(p.name||'').startsWith('[예시]'));
-  const t=Date.now();
-  const add=[
-   {ts:t+4,cat:'bar',name:'이태원 (ITAEWON) 코리아타운점',region:'방콕',
-    desc:'수쿰빗 소이12 코리아타운(수쿰빗플라자) 2층 한인 바. 매일 저녁 7시~아침 7시, 분위기·안주 모두 호평 ★4.9',
-    benefit:'',link:'',img:'',author:'관리자'},
-   {ts:t+3,cat:'bar',name:'이태원 에까마이 (ITAEWON@EKKAMAI)',region:'방콕',
-    desc:'에까마이(수쿰빗 소이63)의 한인 바 & 코리안 다이닝. 저녁 8시 오픈~아침까지, 양념치킨 맛집 ★4.8',
-    benefit:'',link:'',img:'',author:'관리자'},
-   {ts:t+2,cat:'bar',name:'PUB33 — RCA 브라보BKK 6층',region:'방콕',
-    desc:'RCA 브라보BKK 6층의 펍 & 와인바. 저녁 8시~새벽 4시 영업.',
-    benefit:'',link:'',img:'',author:'관리자'},
-   {ts:t+1,cat:'club',name:'브릿지 RCA (Bridge RCA)',region:'방콕',
-    desc:'RCA에 새롭게 선보일 신규 베뉴. 현재 오픈 준비 중 — 오픈 소식은 공지로 가장 먼저 알려드릴게요!',
-    benefit:'',link:'',img:'',soon:true,author:'관리자'}
-  ];
-  SS('tl_partner',add.concat(keep));
-  SS('tl_partner_seeded_v2',true);
-  SS('tl_partner_seeded',true);
+async function loadFeaturedBanners(){
+  let feat=[];
+  try{
+    const all=await TL.posts('partner');
+    feat=all.filter(p=>p.kind==='featured' && !p.soon).slice(0,4);
+  }catch(e){ return; }
+  const catEmoji=c=>({night:'🌙',bar:'🍸',club:'🎧',spa:'💆',sight:'🛕',food:'🍜',coffee:'☕',stay:'🏨'}[c]||'🏪');
+  const cardHtml=p=>{
+    const link=p.link||'';
+    const clickAttr=link
+      ? 'href="'+esc(link)+'" target="_blank" rel="noopener" onclick="logBook(\''+esc(p.title).replace(/'/g,"")+'\')"'
+      : 'href="#" onclick="go(\'partner\');return false;"';
+    return '<a class="sb-ad" '+clickAttr+'>'+
+      (p.img?'<img class="adimg" src="'+esc(p.img)+'">':'<div class="adimg ph">'+catEmoji(p.cat)+'</div>')+
+      '<div class="adbody"><span class="adtag">📢 광고</span>'+
+      '<span class="adname">'+esc(p.title)+'</span>'+
+      (p.benefit?'<span class="adbenefit">🎁 '+esc(p.benefit)+'</span>':'')+
+      '</div></a>';
+  };
+  const html=feat.map(cardHtml).join('');
+  // 좌우 분배 (홀수는 왼쪽, 짝수는 오른쪽)
+  const leftHtml=feat.filter((_,i)=>i%2===0).map(cardHtml).join('');
+  const rightHtml=feat.filter((_,i)=>i%2===1).map(cardHtml).join('');
+  const fl=document.getElementById('featLeft'); if(fl) fl.innerHTML=leftHtml;
+  const fr=document.getElementById('featRight'); if(fr) fr.innerHTML=rightHtml;
+  // 모바일 상단용 저장
+  window._featTop=feat.map(cardHtml).join('');
+  const mt=document.getElementById('featTop'); if(mt) mt.innerHTML=window._featTop;
 }
+
 async function renderPartner(){
   _cache.tl_partner=(await TL.posts('partner')).map(mapPost);
-  partnerSeed();
   const list=S('tl_partner',[]).filter(p=>!isBlocked(p.author)&&(pFilter==='all'||p.cat===pFilter));
   const me=getNick();
   const catLb=c=>{const f=PCATS.find(x=>x[0]===c);return f?f[2]+' '+f[1]:c;};
@@ -1100,6 +1132,7 @@ function startApp(){ (async function(){
     await TL.init();
     await refreshAll();
     await go('home');
+    await loadFeaturedBanners();
     await loadChat(true);
     TL.onChat(()=>loadChat(false));
     TL.onNotif(()=>updateBadge());
