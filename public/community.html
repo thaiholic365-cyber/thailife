@@ -890,13 +890,75 @@ function openImg(src,cap){
 }
 
 /* ============ 태국뉴스 ============ */
+/* ===== 실시간 태국 뉴스 (RSS) ===== */
+const RSS_SOURCES=[
+  {name:'Bangkok Post', url:'https://www.bangkokpost.com/rss/data/thailand.xml'},
+  {name:'Bangkok Post 주요', url:'https://www.bangkokpost.com/rss/data/topstories.xml'}
+];
+let _rssCache=null, _rssTime=0;
+
+async function fetchThaiNews(){
+  // 10분 캐시
+  if(_rssCache && Date.now()-_rssTime<600000) return _rssCache;
+  const src=RSS_SOURCES[0];
+  // CORS 우회: 무료 RSS→JSON 변환 서비스
+  const api='https://api.rss2json.com/v1/api.json?count=8&rss_url='+encodeURIComponent(src.url);
+  try{
+    const r=await fetch(api);
+    if(!r.ok) throw new Error('http '+r.status);
+    const j=await r.json();
+    if(j.status!=='ok'||!Array.isArray(j.items)) throw new Error('형식 오류');
+    _rssCache=j.items.map(it=>({
+      title:it.title||'',
+      link:it.link||'',
+      date:it.pubDate||'',
+      desc:(it.description||'').replace(/<[^>]*>/g,'').trim().slice(0,150),
+      source:src.name
+    }));
+    _rssTime=Date.now();
+    return _rssCache;
+  }catch(e){ console.warn('RSS 로드 실패',e); return null; }
+}
+
+function rssTimeago(dateStr){
+  const t=new Date(dateStr).getTime();
+  if(!t) return '';
+  const d=Date.now()-t, h=Math.floor(d/3600000), m=Math.floor(d/60000);
+  if(h>=24) return Math.floor(h/24)+'일 전';
+  if(h>=1) return h+'시간 전';
+  if(m>=1) return m+'분 전';
+  return '방금';
+}
+
+async function renderThaiNewsFeed(){
+  const box=document.getElementById('rssFeed'); if(!box) return;
+  box.innerHTML='<div style="padding:16px;text-align:center;color:var(--sub);font-size:13px">📡 실시간 뉴스를 불러오는 중…</div>';
+  const items=await fetchThaiNews();
+  if(!items||!items.length){
+    box.innerHTML='<div style="padding:14px;text-align:center;color:var(--sub);font-size:12.5px">지금은 실시간 뉴스를 불러올 수 없습니다.<br><a href="https://www.bangkokpost.com/thailand" target="_blank" rel="noopener" style="color:var(--gold)">Bangkok Post에서 직접 보기 →</a></div>';
+    return;
+  }
+  box.innerHTML=items.map(n=>
+    '<a href="'+esc(n.link)+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;padding:11px 13px;border-bottom:1px solid var(--line)">'+
+    '<div style="font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.45">'+esc(n.title)+'</div>'+
+    (n.desc?'<div style="font-size:11.5px;color:var(--sub);margin-top:4px;line-height:1.5">'+esc(n.desc)+'…</div>':'')+
+    '<div style="font-size:10.5px;color:var(--gold);margin-top:5px;font-weight:700">📰 '+esc(n.source)+' · '+rssTimeago(n.date)+' · 원문 보기 →</div>'+
+    '</a>').join('');
+}
+
 async function renderNews(){
   _cache.tl_news=(await TL.posts('news')).map(mapPost);
   const list=S('tl_news',[]).filter(p=>!isBlocked(p.author));
   const me=getNick();
   $('main').innerHTML=
-  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📰 태국뉴스</h2><small>운영진이 전하는 현지 소식</small></div>'+
-  '<div style="background:var(--panel2);border-left:3px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--sub)">📢 태국뉴스는 <b style="color:var(--ink)">관리자만 등록</b>할 수 있습니다. 제보하실 소식이 있다면 🎧 고객센터로 보내주세요!</div></div>'+
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📰 태국뉴스</h2><small>실시간 현지 뉴스 + 운영진 소식</small></div>'+
+  '<div style="background:linear-gradient(135deg,#1a2a2e,#16343a);border:1px solid var(--gold);border-radius:12px;overflow:hidden;margin-bottom:6px">'+
+  '<div style="display:flex;align-items:center;gap:7px;padding:11px 13px;border-bottom:1px solid var(--line)">'+
+  '<span style="width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444;animation:pulse 1.6s infinite"></span>'+
+  '<b style="font-size:13.5px;color:var(--gold)">실시간 태국 뉴스</b>'+
+  '<span style="font-size:10.5px;color:var(--sub);margin-left:auto">Bangkok Post 제공</span></div>'+
+  '<div id="rssFeed"></div></div>'+
+  '<div style="background:var(--panel2);border-left:3px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--sub);margin-bottom:14px">📢 아래 소식은 <b style="color:var(--ink)">운영진</b>이 직접 전하는 커뮤니티 뉴스입니다. 제보는 🎧 고객센터로!</div></div>'+
   (list.length?list.map(p=>
     '<div class="post" style="border-left-color:var(--c-stay)">'+
     '<div class="post-title">'+esc(p.title)+'</div>'+
@@ -906,7 +968,8 @@ async function renderNews(){
     '<div class="post-actions">'+
       (p.link?'<a class="btn btn-line btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(p.link)+'">원문 보기 →</a>':'')+
       (p.author===me?'<button class="btn btn-red btn-sm" onclick="delItem(\'tl_news\','+p.ts+',renderNews)">삭제</button>':'')+
-    '</div></div>').join(''):'<div class="empty">등록된 소식이 없습니다.</div>');
+    '</div></div>').join(''):'<div class="empty">아직 운영진 소식이 없습니다.</div>');
+  renderThaiNewsFeed();
 }
 /* ============ 맛집추천 ============ */
 let foodRegion='all';
