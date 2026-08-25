@@ -215,6 +215,18 @@ const TL = {
     const { data } = await sb.from('coupons').select('*').order('created_at', { ascending: false });
     return data || [];
   },
+  // 관리자: 예약·문의 알림(@admin) 조회
+  async adminInbox(limit = 100) {
+    const { data } = await sb.from('notifications')
+      .select('*').eq('target', '@admin')
+      .order('created_at', { ascending: false }).limit(limit);
+    return data || [];
+  },
+  // 관리자: 예약·문의 항목 삭제
+  async adminInboxDelete(id) {
+    const { error } = await sb.from('notifications').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
   // 회원이 자기 쿠폰을 사용 처리
   async useCoupon(id) {
     const { error } = await sb.from('coupons').update({ used: true }).eq('id', id);

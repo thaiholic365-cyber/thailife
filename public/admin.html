@@ -385,6 +385,7 @@ body{background:
     <button class="tab" id="ct-content" onclick="commTab('content')">📝 게시글 관리</button>
     <button class="tab" id="ct-chat" onclick="commTab('chat')">💬 채팅 관리</button>
     <button class="tab" id="ct-coupon" onclick="commTab('coupon')">🎟 쿠폰·알림</button>
+    <button class="tab" id="ct-booking" onclick="commTab('booking')">📅 예약·문의</button>
     <button class="tab" id="ct-support" onclick="commTab('support')">🎧 고객센터 설정</button>
   </div>
   <div class="box" id="commBody"></div>
@@ -758,8 +759,8 @@ function setSection(s){
 }
 async function commTab(t){
   curCommTab=t;
-  ['stats','members','content','chat','coupon','support'].forEach(x=>document.getElementById('ct-'+x).classList.toggle('on',x===t));
-  await ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,support:renderSupportAdmin})[t]();
+  ['stats','members','content','chat','coupon','booking','support'].forEach(x=>document.getElementById('ct-'+x).classList.toggle('on',x===t));
+  await ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,booking:renderBookingAdmin,support:renderSupportAdmin})[t]();
 }
 
 /* --- 통계 --- */
@@ -1371,6 +1372,33 @@ function clearAdminInbox(){
 
 /* --- 고객센터 설정 --- */
 function supportA(){ return cS('tl_support',{}); }
+async function renderBookingAdmin(){
+  document.getElementById('commBody').innerHTML='<div style="padding:24px;text-align:center;color:var(--sub)">불러오는 중…</div>';
+  let items=[];
+  try{ items=await TL.adminInbox(150); }catch(e){ items=[]; }
+  const box=document.getElementById('commBody');
+  const when=ts=>{ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  box.innerHTML=
+    '<div style="margin-bottom:6px"><h3 style="font-size:15px;margin-bottom:4px">📅 예약 · 문의 접수함</h3>'+
+    '<p class="hint" style="margin-bottom:12px">회원이 예약 링크가 없는 제휴업체에서 "예약·문의"를 누르거나, 예약 버튼을 클릭하면 여기에 접수됩니다. 확인 후 회원에게 직접 연락해주세요.</p></div>'+
+    (items.length?
+      '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+      '<span class="pill" style="background:var(--panel2);border:1px solid var(--gold);color:var(--gold);padding:5px 12px;border-radius:20px;font-size:12px">📥 전체 <b>'+items.length+'</b>건</span></div>'+
+      items.map(n=>
+        '<div class="item" style="border-left-color:var(--gold)">'+
+        '<div class="item-top"><div class="item-name" style="font-size:13.5px">'+esc2(n.icon||'📅')+' '+esc2(n.title||'예약 문의')+'</div>'+
+        '<small style="color:var(--sub)">'+when(n.created_at)+'</small></div>'+
+        '<div class="item-tip" style="font-size:12.5px;line-height:1.6;margin-top:5px;white-space:pre-wrap">'+esc2(n.body||'')+'</div>'+
+        '<div class="item-btns" style="margin-top:8px"><button class="btn btn-red btn-sm" onclick="delBooking('+n.id+')">확인 완료 · 삭제</button></div>'+
+        '</div>').join('')
+      :'<div class="empty" style="padding:30px">아직 접수된 예약·문의가 없습니다.<br><span style="font-size:11.5px">회원이 제휴업체에서 예약·문의를 누르면 여기에 표시됩니다.</span></div>');
+}
+async function delBooking(id){
+  if(!confirm('이 문의를 삭제할까요? (확인 완료 처리)')) return;
+  try{ await TL.adminInboxDelete(id); toast('삭제되었습니다'); await renderBookingAdmin(); }
+  catch(e){ alert(e.message); }
+}
+
 function renderSupportAdmin(){
   const sp=supportA();
   const blockUI=(key,icon,title,hint)=>

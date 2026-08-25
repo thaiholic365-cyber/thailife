@@ -361,6 +361,10 @@ body{background:
   <div class="authbox" id="profileBody"></div>
 </div>
 
+<div id="partnerModal" onclick="if(event.target===this)closePartner()" style="position:fixed;inset:0;background:rgba(13,9,24,.9);z-index:1600;display:none;align-items:center;justify-content:center;padding:20px">
+  <div class="authbox" id="partnerBody" style="max-width:440px;max-height:88vh;overflow-y:auto;padding:0"></div>
+</div>
+
 
 <!-- 알림 패널 -->
 <div id="notifPanel" style="display:none;position:fixed;top:64px;right:12px;width:min(340px,92vw);max-height:70vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 34px rgba(29,58,63,.18);z-index:1400;padding:12px">
@@ -626,6 +630,7 @@ async function refreshAll(){
     joined:new Date(m.created_at).getTime(), lastSeen:new Date(m.last_seen).getTime() }; });
   _cache.tl_banned=await TL.getSetting('banned',[]);
   _cache.tl_support=await TL.getSetting('support',{});
+  updateAuthUI();
   }
 
 /* ============ 알림 & 쿠폰 (서버) ============ */
@@ -651,16 +656,23 @@ async function toggleNotif(){
     await TL.markRead(); updateBadge();
   } else p.style.display='none';
 }
+function _bookInfo(){
+  const me=TL.me?TL.me():null;
+  const nick=getNick()||'(비회원)';
+  const phone=me&&me.phone?me.phone:'연락처 미등록';
+  const rname=me&&me.name?me.name:'';
+  return '👤 회원: '+nick+(rname?' ('+rname+')':'')+String.fromCharCode(10)+'📞 연락처: '+phone;
+}
 async function partnerAsk(name){
   if(!getNick()){ openAuth('login'); toast('로그인 후 이용할 수 있습니다'); return; }
-  await TL.notifSend('@admin','📅','예약 문의 발생',
-    getNick()+' 님이 "'+name+'" 예약·문의를 원합니다. (예약 링크 미등록 업체)');
+  await TL.notifSend('@admin','📅','예약·문의 ['+name+']',
+    '"'+name+'" 예약·문의를 원합니다. (예약 링크 미등록 업체)'+String.fromCharCode(10)+_bookInfo());
   toast('예약 문의가 접수되었습니다. 운영자가 확인 후 연락드립니다 📅');
 }
 async function logBook(name){
   if(!getNick()) return;
-  await TL.notifSend('@admin','📅','예약 문의 발생',
-    getNick()+' 님이 "'+name+'" 예약·문의 링크를 눌렀습니다.');
+  await TL.notifSend('@admin','📅','예약·문의 ['+name+']',
+    '"'+name+'" 예약 링크를 통해 문의했습니다.'+String.fromCharCode(10)+_bookInfo());
   toast('예약 문의로 연결합니다 🎟');
 }
 
@@ -1019,6 +1031,42 @@ async function saveFood(){
 /* ============ 제휴업체 ============ */
 const PCATS=[['all','전체','📋'],['club','클럽','🎧'],['lounge','라운지','🍸'],['bnb','에어비앤비·숙소','🏠'],['rest','식당','🍽'],['bar','술집','🍺'],['night','나이트라이프','🌙'],['spa','마사지·스파','💆'],['etc','기타','✨']];
 let pFilter='all';
+function closePartner(){ const m=document.getElementById('partnerModal'); if(m) m.style.display='none'; }
+async function openPartnerDetail(id){
+  let p=(S('tl_partner',[])||[]).find(x=>String(x.id)===String(id));
+  if(!p){
+    // 캐시에 없으면 서버에서 로드
+    try{ const all=(await TL.posts('partner')).map(mapPost); _cache.tl_partner=all; p=all.find(x=>String(x.id)===String(id)); }catch(e){}
+  }
+  if(!p){ go('partner'); return; }
+  const catLb=c=>{const f=PCATS.find(x=>x[0]===c);return f?f[2]+' '+f[1]:c;};
+  const link=p.link||'';
+  const isTel=/^tel:/.test(link);
+  const isLine=/line\.me|line\.naver/i.test(link);
+  const qrData=link&&!isTel?link:'';
+  const qrImg=qrData?'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data='+encodeURIComponent(qrData):'';
+  document.getElementById('partnerBody').innerHTML=
+  '<div style="position:relative">'+
+  (p.img?'<img src="'+esc(p.img)+'" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0">'
+        :'<div style="width:100%;height:120px;display:flex;align-items:center;justify-content:center;font-size:54px;background:var(--panel2);border-radius:12px 12px 0 0">'+((PCATS.find(x=>x[0]===p.cat)||['','','🏪'])[2])+'</div>')+
+  '<button onclick="closePartner()" style="position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:18px;cursor:pointer">✕</button>'+
+  (p.soon?'<span style="position:absolute;top:12px;left:12px;background:var(--gold);color:#3a2408;font-size:11px;font-weight:900;padding:5px 12px;border-radius:999px">🔜 곧 오픈 예정</span>':'<span style="position:absolute;top:12px;left:12px;background:var(--gold);color:#3a2408;font-size:10px;font-weight:900;padding:4px 10px;border-radius:999px">📢 광고</span>')+
+  '</div>'+
+  '<div style="padding:16px 18px 20px">'+
+  '<h2 style="font-size:19px;margin:0 0 6px">'+esc(p.name||p.title)+'</h2>'+
+  '<div style="font-size:12.5px;color:var(--sub);margin-bottom:10px">'+catLb(p.cat)+' · 📍 '+esc(p.region||'')+'</div>'+
+  (p.benefit?'<div style="background:linear-gradient(135deg,#f6ecce,#eedfb4);border:1px dashed var(--gold);border-radius:10px;padding:10px 13px;margin-bottom:12px"><div style="font-size:10.5px;color:#9a7a3a;font-weight:700">회원 전용 혜택</div><div style="font-size:14px;font-weight:900;color:#7a4a08;margin-top:2px">🎁 '+esc(p.benefit)+'</div></div>':'')+
+  (p.desc?'<div style="font-size:13.5px;line-height:1.7;color:var(--ink);white-space:pre-wrap;margin-bottom:14px">'+esc(p.desc)+'</div>':'')+
+  (p.soon
+    ? '<div style="text-align:center;padding:14px;background:var(--panel2);border-radius:10px;color:var(--sub);font-size:13px">🔜 오픈 준비 중입니다. 조금만 기다려주세요!</div>'
+    : (link
+      ? '<a class="btn btn-gold" style="width:100%;text-decoration:none;text-align:center;display:block;padding:13px;font-size:15px" data-pn="'+esc(p.name||p.title)+'" onclick="logBook(this.dataset.pn)" target="_blank" rel="noopener" href="'+esc(link)+'">'+(isTel?'📞 전화 예약하기':isLine?'💬 LINE으로 예약·문의':'🔗 예약 · 문의하기')+'</a>'+
+        (qrImg?'<div style="margin-top:16px;text-align:center"><div style="font-size:12px;color:var(--sub);margin-bottom:8px">📱 QR 코드로 바로 접속</div><div style="display:inline-block;background:#fff;padding:12px;border-radius:12px"><img src="'+qrImg+'" alt="예약 QR" style="width:160px;height:160px;display:block"></div></div>':'')
+      : '<div class="btn btn-gold" style="width:100%;text-align:center;padding:13px;font-size:14px;cursor:pointer" onclick="closePartner();go(\'partner\')">제휴업체 목록에서 보기 →</div>'))+
+  '</div>';
+  document.getElementById('partnerModal').style.display='flex';
+}
+
 async function loadFeaturedBanners(){
   let feat=[];
   try{
@@ -1027,11 +1075,7 @@ async function loadFeaturedBanners(){
   }catch(e){ return; }
   const catEmoji=c=>({night:'🌙',bar:'🍸',club:'🎧',spa:'💆',sight:'🛕',food:'🍜',coffee:'☕',stay:'🏨'}[c]||'🏪');
   const cardHtml=p=>{
-    const link=p.link||'';
-    const clickAttr=link
-      ? 'href="'+esc(link)+'" target="_blank" rel="noopener" onclick="logBook(\''+esc(p.title).replace(/'/g,"")+'\')"'
-      : 'href="#" onclick="go(\'partner\');return false;"';
-    return '<a class="sb-ad" '+clickAttr+'>'+
+    return '<a class="sb-ad" href="#" onclick="openPartnerDetail(\''+p.id+'\');return false;">'+
       (p.img?'<img class="adimg" src="'+esc(p.img)+'">':'<div class="adimg ph">'+catEmoji(p.cat)+'</div>')+
       '<div class="adbody"><span class="adtag">📢 광고</span>'+
       '<span class="adname">'+esc(p.title)+'</span>'+
