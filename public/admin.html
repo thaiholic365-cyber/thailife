@@ -927,14 +927,14 @@ function toggleBlock(n){
   toast(n+' 님을 '+(m[n].blocked?'차단했습니다':'차단 해제했습니다'));
   renderMembers();
 }
-function kickMember(n){
+async function kickMember(n){
   if(!confirm(n+' 님을 탈퇴 처리할까요?')) return;
   const wipe=confirm('작성한 게시글·채팅도 함께 삭제할까요?\\n(취소 시 글은 남기고 회원 기록만 삭제)');
   const m=membersA(); delete m[n]; saveMembersA(m);
   const uu=cS('tl_users',{}); delete uu[n]; cSS('tl_users',uu);
   if(wipe){
     for(const k in CKEYS) cSS(CKEYS[k], cS(CKEYS[k],[]).filter(p=>p.author!==n));
-    cSS('tl_chat', cS('tl_chat',[]).filter(c=>c.n!==n));
+    try{ await TL.chatDeleteByNick(n); }catch(e){} _cache.tl_chat=cS('tl_chat',[]).filter(c=>c.n!==n);
     // 모임 참여 명단에서도 제거
     const meets=cS('tl_meet',[]); meets.forEach(x=>{ if(x.joiners) x.joiners=x.joiners.filter(j=>j!==n); }); cSS('tl_meet',meets);
   }
@@ -1509,25 +1509,27 @@ function renderChatAdmin(){
   '<div id="chatMsgList"></div>';
   refreshChatList();
 }
-function sendAdminChat(){
+async function sendAdminChat(){
   const ta=document.getElementById('noticeIn'), txt=ta.value.trim();
   if(!txt){ alert('내용을 입력해주세요.'); return; }
-  const a=cS('tl_chat',[]);
-  a.push({n:'관리자',t:txt,ts:Date.now(),admin:true});
-  cSS('tl_chat',a.slice(-200));
-  ta.value='';
-  toast('관리자 채팅으로 전송되었습니다 👑');
-  refreshChatList();
+  try{
+    await TL.chatSend(txt,{notice:false,isAdmin:true});
+    ta.value='';
+    toast('관리자 채팅으로 전송되었습니다 👑');
+    await reloadChat(); refreshChatList();
+  }catch(e){ alert('전송 실패: '+e.message); }
+  return;
 }
-function sendNotice(){
+async function sendNotice(){
   const ta=document.getElementById('noticeIn'), txt=ta.value.trim();
   if(!txt){ alert('공지 내용을 입력해주세요.'); return; }
-  const a=cS('tl_chat',[]);
-  a.push({n:'관리자',t:txt,ts:Date.now(),notice:true});
-  cSS('tl_chat',a.slice(-200));
-  ta.value='';
-  toast('공지가 채팅방에 배포되었습니다 📢');
-  refreshChatList();
+  try{
+    await TL.chatSend(txt,{notice:true,isAdmin:true});
+    ta.value='';
+    toast('공지가 채팅방에 배포되었습니다 📢');
+    await reloadChat(); refreshChatList();
+  }catch(e){ alert('공지 배포 실패: '+e.message); }
+  return;
 }
 function refreshChatList(){
   const words=bannedA();
@@ -1554,12 +1556,15 @@ function refreshChatList(){
   }).join('')
   :'<div class="empty">'+(chatSearch?'검색 결과가 없습니다.':'채팅 메시지가 없습니다.')+'</div>');
 }
-function delReply(msgTs,repTs){
+async function delReply(msgTs,repTs){
   const a=cS('tl_chat',[]);
   const m=a.find(x=>x.ts===msgTs); if(!m||!m.replies) return;
-  m.replies=m.replies.filter(r=>r.ts!==repTs);
-  cSS('tl_chat',a);
-  toast('답글을 삭제했습니다'); refreshChatList();
+  const r=m.replies.find(x=>x.ts===repTs);
+  if(!r||r.id==null){ alert('서버에 저장된 답글만 삭제할 수 있습니다.'); return; }
+  try{
+    await TL.replyDelete(r.id);
+    toast('답글을 삭제했습니다'); await reloadChat(); refreshChatList();
+  }catch(e){ alert('삭제 실패: '+e.message); }
 }
 function addBanned(){
   const inp=document.getElementById('bwInput'), w=inp.value.trim();
@@ -1572,20 +1577,37 @@ function addBanned(){
 function delBanned(i){
   const a=bannedA(); a.splice(i,1); saveBannedA(a); toast('삭제되었습니다'); renderChatAdmin();
 }
-function delUserChat(){
+async function delUserChat(){
   const n=document.getElementById('chatUserSel').value;
   if(!n){ alert('회원을 선택해주세요.'); return; }
   if(!confirm(n+' 님의 채팅 메시지를 전부 삭제할까요?')) return;
-  cSS('tl_chat', cS('tl_chat',[]).filter(c=>c.n!==n));
+  try{ await TL.chatDeleteByNick(n); }catch(e){} _cache.tl_chat=cS('tl_chat',[]).filter(c=>c.n!==n);
   toast(n+' 님의 메시지를 삭제했습니다'); renderChatAdmin();
 }
-function delChatMsg(ts){
-  cSS('tl_chat', cS('tl_chat',[]).filter(c=>c.ts!==ts));
-  toast('삭제되었습니다'); refreshChatList();
+async function reloadChat(){
+  try{
+    const ch=await TL.chatList(200);
+    _cache.tl_chat=ch.map(c=>({id:c.id,n:c.nick,t:c.text,ts:new Date(c.created_at).getTime(),
+      notice:c.notice,admin:c.is_admin,
+      replies:(c.replies||[]).map(r=>({id:r.id,n:r.nick,t:r.text,ts:new Date(r.created_at).getTime()}))}));
+  }catch(e){ console.error(e); }
 }
-function clearChat(){
+
+async function delChatMsg(ts){
+  const c=cS('tl_chat',[]).find(x=>x.ts===ts);
+  if(!c||c.id==null){ alert('서버에 저장된 메시지만 삭제할 수 있습니다.'); return; }
+  try{
+    await TL.chatDelete(c.id);
+    toast('삭제되었습니다'); await reloadChat(); refreshChatList();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+}
+async function clearChat(){
   if(!confirm('채팅 전체를 삭제할까요? 되돌릴 수 없습니다.')) return;
-  cSS('tl_chat',[]); toast('채팅을 비웠습니다'); renderChatAdmin();
+  try{
+    const all=cS('tl_chat',[]);
+    for(const c of all){ if(c.id!=null) await TL.chatDelete(c.id); }
+    toast('채팅을 비웠습니다'); await reloadChat(); renderChatAdmin();
+  }catch(e){ alert('삭제 실패: '+e.message); }
 }
 
 /* ===== 로그인 ===== */
