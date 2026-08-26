@@ -386,6 +386,7 @@ body{background:
     <button class="tab" id="ct-chat" onclick="commTab('chat')">💬 채팅 관리</button>
     <button class="tab" id="ct-coupon" onclick="commTab('coupon')">🎟 쿠폰·알림</button>
     <button class="tab" id="ct-booking" onclick="commTab('booking')">📅 예약·문의</button>
+    <button class="tab" id="ct-dm" onclick="commTab('dm')">✉️ 쪽지 <span id="dmBadge" style="display:none;background:#ff4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px"></span></button>
     <button class="tab" id="ct-support" onclick="commTab('support')">🎧 고객센터 설정</button>
   </div>
   <div class="box" id="commBody"></div>
@@ -759,8 +760,8 @@ function setSection(s){
 }
 async function commTab(t){
   curCommTab=t;
-  ['stats','members','content','chat','coupon','booking','support'].forEach(x=>document.getElementById('ct-'+x).classList.toggle('on',x===t));
-  await ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,booking:renderBookingAdmin,support:renderSupportAdmin})[t]();
+  ['stats','members','content','chat','coupon','booking','dm','support'].forEach(x=>document.getElementById('ct-'+x).classList.toggle('on',x===t));
+  await ({stats:renderStats,members:renderMembers,content:renderContent,chat:renderChatAdmin,coupon:renderCouponAdmin,booking:renderBookingAdmin,dm:renderDMAdmin,support:renderSupportAdmin})[t]();
 }
 
 /* --- 통계 --- */
@@ -1372,6 +1373,123 @@ function clearAdminInbox(){
 
 /* --- 고객센터 설정 --- */
 function supportA(){ return cS('tl_support',{}); }
+let _dmActive=null;  // 현재 선택된 회원 id
+async function renderDMAdmin(){
+  const box=document.getElementById('commBody');
+  box.innerHTML='<div style="padding:24px;text-align:center;color:var(--sub)">불러오는 중…</div>';
+  let all=[];
+  try{ all=await TL.allDMs(2000); }catch(e){ box.innerHTML='<div class="empty">쪽지를 불러올 수 없습니다.</div>'; return; }
+  // 회원별로 그룹핑
+  const threads={};
+  all.forEach(m=>{
+    if(!threads[m.member_id]) threads[m.member_id]={id:m.member_id,nick:m.member_nick,msgs:[],unread:0,last:null};
+    threads[m.member_id].msgs.push(m);
+    threads[m.member_id].last=m;
+    if(!m.from_admin && !m.read_by_admin) threads[m.member_id].unread++;
+  });
+  const list=Object.values(threads).sort((x,y)=>new Date(y.last.created_at)-new Date(x.last.created_at));
+  const when=ts=>{ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+  box.innerHTML=
+    '<div style="margin-bottom:12px"><h3 style="font-size:15px;margin-bottom:4px">✉️ 1:1 쪽지 관리</h3>'+
+    '<p class="hint" style="margin-bottom:0">회원과 주고받은 비공개 대화입니다. 왼쪽에서 회원을 선택하면 대화가 열립니다. 새 회원에게 먼저 보내려면 아래 "새 쪽지" 버튼을 누르세요.</p></div>'+
+    '<div style="margin-bottom:12px"><button class="btn btn-gold btn-sm" onclick="newDMPrompt()">✏️ 새 쪽지 보내기</button></div>'+
+    '<div style="display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start" id="dmGrid">'+
+    '<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:60vh;overflow-y:auto">'+
+    (list.length?list.map(t=>
+      '<div onclick="openDMThread(\''+t.id+'\',\''+esc2(t.nick).replace(/\x27/g,"")+'\')" style="padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;'+(_dmActive===t.id?'background:var(--panel2)':'')+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">'+esc2(t.nick)+'</b>'+(t.unread?'<span style="background:#ff4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:800">'+t.unread+'</span>':'')+'</div>'+
+      '<div style="font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(t.last.from_admin?'나: ':'')+esc2(t.last.text)+'</div>'+
+      '</div>').join(''):'<div class="empty" style="padding:20px;font-size:12px">아직 대화가 없습니다.</div>')+
+    '</div>'+
+    '<div id="dmConvo" style="border:1px solid var(--line);border-radius:12px;min-height:400px;display:flex;flex-direction:column">'+
+    '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;padding:40px">← 왼쪽에서 회원을 선택하세요</div>'+
+    '</div></div>';
+
+  window._dmThreads=threads;
+  // 이전 선택 유지
+  if(_dmActive && threads[_dmActive]) openDMThread(_dmActive, threads[_dmActive].nick);
+  refreshDMBadge();
+}
+
+async function openDMThread(memberId, nick){
+  _dmActive=memberId;
+  const t=(window._dmThreads||{})[memberId];
+  const convo=document.getElementById('dmConvo'); if(!convo) return;
+  const when=ts=>{ const d=new Date(ts); return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  const msgs=t?t.msgs:[];
+  convo.innerHTML=
+    '<div style="padding:11px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">'+
+    '<b style="font-size:14px">👤 '+esc2(nick)+'</b>'+
+    '<button class="btn btn-red btn-sm" onclick="deleteDMThread(\''+memberId+'\',\''+esc2(nick).replace(/\x27/g,"")+'\')">대화 삭제</button></div>'+
+    '<div id="dmAdminThread" style="flex:1;max-height:44vh;overflow-y:auto;padding:14px;background:var(--panel2)">'+
+    msgs.map(m=>{
+      const t2=when(m.created_at);
+      if(m.from_admin){
+        return '<div style="display:flex;justify-content:flex-end;margin-bottom:11px"><div style="max-width:76%;text-align:right"><div style="background:var(--gold);color:#3a2408;padding:8px 12px;border-radius:14px 3px 14px 14px;font-size:13px;line-height:1.5;white-space:pre-wrap;text-align:left;display:inline-block">'+esc2(m.text)+'</div><div style="font-size:9.5px;color:var(--sub);margin-top:3px">나 · '+t2+(m.read_by_member?' · 읽음':'')+'</div></div></div>';
+      }
+      return '<div style="display:flex;margin-bottom:11px"><div style="max-width:76%"><div style="background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:8px 12px;border-radius:3px 14px 14px 14px;font-size:13px;line-height:1.5;white-space:pre-wrap">'+esc2(m.text)+'</div><div style="font-size:9.5px;color:var(--sub);margin-top:3px">'+esc2(nick)+' · '+t2+'</div></div></div>';
+    }).join('')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;padding:11px;border-top:1px solid var(--line)">'+
+    '<input id="dmAdminInput" placeholder="답장 입력…" style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit" onkeydown="if(event.key===\'Enter\')sendAdminDM()">'+
+    '<button class="btn btn-gold btn-sm" onclick="sendAdminDM()">전송</button></div>';
+  const th=document.getElementById('dmAdminThread'); if(th) th.scrollTop=th.scrollHeight;
+  // 읽음 처리
+  try{ await TL.markDMReadAdmin(memberId); }catch(e){}
+  // 목록 하이라이트 갱신
+  refreshDMBadge();
+}
+
+async function sendAdminDM(){
+  if(!_dmActive) return;
+  const inp=document.getElementById('dmAdminInput'); const txt=inp.value.trim();
+  if(!txt) return;
+  const t=(window._dmThreads||{})[_dmActive];
+  const nick=t?t.nick:'';
+  inp.value='';
+  try{
+    await TL.sendDMToMember(_dmActive, nick, txt);
+    await renderDMAdmin();
+  }catch(e){ alert('전송 실패: '+e.message); inp.value=txt; }
+}
+
+async function newDMPrompt(){
+  let members=[];
+  try{ members=await TL.memberList(); }catch(e){ alert('회원 목록을 불러올 수 없습니다.'); return; }
+  if(!members.length){ alert('등록된 회원이 없습니다.'); return; }
+  const nick=prompt('쪽지를 보낼 회원 닉네임을 입력하세요:');
+  if(!nick) return;
+  const m=members.find(x=>x.nick===nick.trim());
+  if(!m){ alert('"'+nick+'" 회원을 찾을 수 없습니다. 닉네임을 정확히 입력해주세요.'); return; }
+  const txt=prompt(m.nick+' 님에게 보낼 메시지:');
+  if(!txt||!txt.trim()) return;
+  try{
+    await TL.sendDMToMember(m.id, m.nick, txt.trim());
+    toast('쪽지를 보냈습니다 ✉️');
+    _dmActive=m.id;
+    await renderDMAdmin();
+  }catch(e){ alert('전송 실패: '+e.message); }
+}
+
+async function deleteDMThread(memberId, nick){
+  if(!confirm('"'+nick+'" 님과의 대화를 모두 삭제할까요? 되돌릴 수 없습니다.')) return;
+  try{
+    await TL.deleteDMThread(memberId);
+    _dmActive=null;
+    toast('대화를 삭제했습니다');
+    await renderDMAdmin();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+}
+
+async function refreshDMBadge(){
+  try{
+    const n=await TL.unreadDMAdmin();
+    const b=document.getElementById('dmBadge');
+    if(b){ b.style.display=n>0?'inline-block':'none'; b.textContent=n>99?'99+':String(n); }
+  }catch(e){}
+}
+
 async function renderBookingAdmin(){
   document.getElementById('commBody').innerHTML='<div style="padding:24px;text-align:center;color:var(--sub)">불러오는 중…</div>';
   let items=[];

@@ -635,10 +635,20 @@ async function refreshAll(){
 
 /* ============ 알림 & 쿠폰 (서버) ============ */
 async function updateBadge(){
-  const b=$('bellBadge'); if(!b) return;
-  const cnt=getNick()?await TL.unreadCount():0;
-  b.style.display=cnt>0?'block':'none';
-  b.textContent=cnt>99?'99+':String(cnt);
+  const b=$('bellBadge');
+  if(b){
+    const cnt=getNick()?await TL.unreadCount():0;
+    b.style.display=cnt>0?'block':'none';
+    b.textContent=cnt>99?'99+':String(cnt);
+  }
+  // 쪽지 안읽음 뱃지
+  const db=document.getElementById('dmNavBadge');
+  if(db){
+    let dm=0;
+    try{ dm=getNick()?await TL.unreadDMMember():0; }catch(e){}
+    db.style.display=dm>0?'inline-block':'none';
+    db.textContent=dm>99?'99+':String(dm);
+  }
 }
 async function toggleNotif(){
   const p=$('notifPanel');
@@ -777,15 +787,66 @@ const PAGES=[
   {id:'partner', lb:'⭐ 제휴업체 ⭐'},
   {id:'gallery', lb:'갤러리'},
   {id:'supportCS', lb:'🎧 고객센터'},
-  {id:'supportBK', lb:'📅 예약상담'}
+  {id:'supportBK', lb:'📅 예약상담'},
+  {id:'dm', lb:'✉️ 관리자 쪽지'}
 ];
 let cur='home';
 async function go(id){
   cur=id;
   document.querySelectorAll('.nbtn').forEach(b=>b.classList.toggle('on',b.dataset.id===id));
-  await ({home:renderHome,map:renderMap,meet:renderMeet,news:renderNews,food:renderFood,partner:renderPartner,gallery:renderGallery,supportCS:renderSupportCS,supportBK:renderSupportBK})[id]();
+  await ({home:renderHome,map:renderMap,meet:renderMeet,news:renderNews,food:renderFood,partner:renderPartner,gallery:renderGallery,supportCS:renderSupportCS,supportBK:renderSupportBK,dm:renderMemberDM})[id]();
   window.scrollTo({top:0});
 }
+async function renderMemberDM(){
+  if(!getNick()){ openAuth('login'); toast('로그인 후 이용할 수 있습니다'); go('home'); return; }
+  $('main').innerHTML=
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>✉️ 관리자 쪽지</h2><small>운영진과 1:1로 나누는 비공개 대화</small></div>'+
+  '<div style="background:var(--panel2);border-left:3px solid var(--gold);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--sub)">📩 궁금한 점, 건의사항, 제휴 문의 등을 편하게 남겨주세요. 운영진만 볼 수 있습니다.</div></div>'+
+  '<div class="box" style="padding:0;overflow:hidden">'+
+  '<div id="dmThread" style="height:52vh;min-height:320px;overflow-y:auto;padding:14px;background:var(--panel2)"></div>'+
+  '<div style="display:flex;gap:8px;padding:11px;border-top:1px solid var(--line)">'+
+  '<input id="dmInput" placeholder="메시지를 입력하세요…" style="flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit" onkeydown="if(event.key===\'Enter\')sendMemberDM()">'+
+  '<button class="btn btn-gold" style="padding:11px 18px" onclick="sendMemberDM()">전송</button>'+
+  '</div></div>';
+  await loadMemberDM();
+  try{ await TL.markDMReadMember(); updateBadge(); }catch(e){}
+}
+
+async function loadMemberDM(){
+  const box=document.getElementById('dmThread'); if(!box) return;
+  let msgs=[];
+  try{ msgs=await TL.myDMs(); }catch(e){ box.innerHTML='<div class="empty">쪽지를 불러올 수 없습니다.</div>'; return; }
+  if(!msgs.length){
+    box.innerHTML='<div style="text-align:center;color:var(--sub);font-size:13px;padding:40px 20px">아직 주고받은 쪽지가 없습니다.<br>운영진에게 첫 메시지를 남겨보세요! 🙌</div>';
+    return;
+  }
+  box.innerHTML=msgs.map(m=>{
+    const admin=m.from_admin;
+    const t=timeago(new Date(m.created_at).getTime());
+    if(admin){
+      return '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end">'+
+        '<div style="width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">👑</div>'+
+        '<div style="max-width:74%"><div style="font-size:10.5px;color:var(--gold);font-weight:800;margin-bottom:3px">운영진</div>'+
+        '<div style="background:linear-gradient(135deg,#f6ecce,#eedfb4);color:#3a2408;padding:9px 13px;border-radius:3px 14px 14px 14px;font-size:13.5px;line-height:1.5;white-space:pre-wrap">'+esc(m.text)+'</div>'+
+        '<div style="font-size:9.5px;color:var(--sub);margin-top:3px">'+t+'</div></div></div>';
+    }
+    return '<div style="display:flex;justify-content:flex-end;margin-bottom:12px">'+
+      '<div style="max-width:74%;text-align:right"><div style="background:var(--mint);color:#171126;padding:9px 13px;border-radius:14px 3px 14px 14px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;text-align:left;display:inline-block">'+esc(m.text)+'</div>'+
+      '<div style="font-size:9.5px;color:var(--sub);margin-top:3px">'+t+(m.read_by_admin?' · 읽음':'')+'</div></div></div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+async function sendMemberDM(){
+  const inp=document.getElementById('dmInput'); const txt=inp.value.trim();
+  if(!txt) return;
+  inp.value='';
+  try{
+    await TL.sendDMToAdmin(txt);
+    await loadMemberDM();
+  }catch(e){ alert('전송 실패: '+e.message); inp.value=txt; }
+}
+
 function renderMap(){
   // 이미 지도가 그려져 있으면 다시 만들지 않음 (깜박임 방지)
   if(document.getElementById('mapFrame')) return;
@@ -799,7 +860,7 @@ function renderMap(){
   '<iframe id="mapFrame" src="./index.html" loading="lazy" style="width:100%;height:'+h+'px;border:none;border-radius:12px;background:var(--panel2);display:block"></iframe>'+
   '</div>';
 }
-$('nav').innerHTML=PAGES.map(p=>'<button class="nbtn" data-id="'+p.id+'" onclick="go(\''+p.id+'\')">'+p.lb+'</button>').join('');
+$('nav').innerHTML=PAGES.map(p=>'<button class="nbtn" data-id="'+p.id+'" onclick="go(\''+p.id+'\')">'+p.lb+(p.id==='dm'?'<span id="dmNavBadge" style="display:none;background:#ff4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px"></span>':'')+'</button>').join('');
 
 /* ============ 정모·번개 ============ */
 let meetFilter='all', meetRegion='all';
@@ -1248,6 +1309,7 @@ function startApp(){ (async function(){
     await loadChat(true);
     TL.onChat(()=>loadChat(false));
     TL.onNotif(()=>updateBadge());
+    TL.onDM(()=>{ updateBadge(); if(cur==='dm') loadMemberDM(); });
     window.addEventListener('tl:auth',async()=>{ await refreshAll(); await go(cur); });
     setInterval(updateBadge,30000);
   }catch(e){

@@ -227,6 +227,79 @@ const TL = {
     const { error } = await sb.from('notifications').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
+
+  /* ---------- 1:1 쪽지 (DM) ---------- */
+  // 회원: 내 쪽지 전체
+  async myDMs() {
+    if (!this._me) return [];
+    const { data } = await sb.from('dms').select('*')
+      .eq('member_id', this._me.id).order('created_at', { ascending: true });
+    return data || [];
+  },
+  // 회원: 관리자에게 보내기
+  async sendDMToAdmin(text) {
+    const me = this._me; if (!me) throw new Error('로그인이 필요합니다.');
+    const { error } = await sb.from('dms').insert({
+      member_id: me.id, member_nick: me.nick, sender: me.id,
+      from_admin: false, text, read_by_member: true, read_by_admin: false
+    });
+    if (error) throw new Error(error.message);
+  },
+  // 회원: 내 쪽지 읽음 처리
+  async markDMReadMember() {
+    const me = this._me; if (!me) return;
+    await sb.from('dms').update({ read_by_member: true })
+      .eq('member_id', me.id).eq('from_admin', true).eq('read_by_member', false);
+  },
+  // 회원: 안읽은 쪽지 수
+  async unreadDMMember() {
+    const me = this._me; if (!me) return 0;
+    const { count } = await sb.from('dms').select('id', { count: 'exact', head: true })
+      .eq('member_id', me.id).eq('from_admin', true).eq('read_by_member', false);
+    return count || 0;
+  },
+  // 관리자: 전체 쪽지 (대화 목록 구성용)
+  async allDMs(limit = 1000) {
+    const { data } = await sb.from('dms').select('*')
+      .order('created_at', { ascending: true }).limit(limit);
+    return data || [];
+  },
+  // 관리자: 특정 회원에게 보내기
+  async sendDMToMember(memberId, memberNick, text) {
+    const me = this._me; if (!me) throw new Error('로그인이 필요합니다.');
+    const { error } = await sb.from('dms').insert({
+      member_id: memberId, member_nick: memberNick, sender: me.id,
+      from_admin: true, text, read_by_member: false, read_by_admin: true
+    });
+    if (error) throw new Error(error.message);
+  },
+  // 관리자: 특정 회원 대화 읽음 처리
+  async markDMReadAdmin(memberId) {
+    await sb.from('dms').update({ read_by_admin: true })
+      .eq('member_id', memberId).eq('from_admin', false).eq('read_by_admin', false);
+  },
+  // 관리자: 안읽은 쪽지 총 수
+  async unreadDMAdmin() {
+    const { count } = await sb.from('dms').select('id', { count: 'exact', head: true })
+      .eq('from_admin', false).eq('read_by_admin', false);
+    return count || 0;
+  },
+  // 관리자: 회원 목록 (쪽지 대상 선택용)
+  async memberList() {
+    const { data } = await sb.from('profiles').select('id, nick').order('nick');
+    return data || [];
+  },
+  // 관리자: 특정 회원 대화 전체 삭제
+  async deleteDMThread(memberId) {
+    const { error } = await sb.from('dms').delete().eq('member_id', memberId);
+    if (error) throw new Error(error.message);
+  },
+  // 실시간 쪽지 구독
+  onDM(cb) {
+    return sb.channel('dm-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dms' }, cb)
+      .subscribe();
+  },
   // 회원이 자기 쿠폰을 사용 처리
   async useCoupon(id) {
     const { error } = await sb.from('coupons').update({ used: true }).eq('id', id);
