@@ -615,8 +615,47 @@ async function renderHome(){
   '<h2 style="font-size:16px;margin:0;color:var(--gold)">실시간 태국 뉴스</h2>'+
   '<small onclick="go(\'news\')" style="cursor:pointer;margin-left:auto;color:var(--sub)">전체보기 →</small></div>'+
   '<div id="rssFeedHome" style="border-top:1px solid var(--line)"></div></div>'+
-  '<div class="box"><div class="section-title"><h2>🍜 최근 맛집 추천</h2><small onclick="go(\'food\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(foods)+'</div></div>';
+  '<div class="box"><div class="section-title"><h2>🍜 지역별 인기 맛집</h2><small onclick="location.href=\'./index.html\'" style="cursor:pointer">지도에서 보기 →</small></div>'+
+  '<div id="homeFoodChips" class="chiprow" style="margin-bottom:12px"></div>'+
+  '<div id="homeFoodList"></div></div>';
   renderThaiNewsHome();
+  renderHomeFood();
+}
+
+/* ===== 홈: 지역별 인기 맛집 (지도 데이터, 리뷰순) ===== */
+const FOOD_REGIONS=[['bkk','방콕'],['pty','파타야'],['cnx','치앙마이'],['cri','치앙라이'],['pai','빠이'],['kkc','콘깬'],['udn','우돈타니'],['brm','부리람']];
+let _homeFoodRegion='bkk', _homeFoodCache=null;
+
+async function renderHomeFood(){
+  const chips=document.getElementById('homeFoodChips');
+  const listBox=document.getElementById('homeFoodList');
+  if(!chips||!listBox) return;
+  // 지역 칩
+  chips.innerHTML=FOOD_REGIONS.map(([id,nm])=>
+    '<button class="chip'+(_homeFoodRegion===id?' on':'')+'" onclick="_homeFoodRegion=\''+id+'\';renderHomeFood()">'+nm+'</button>').join('');
+  // 데이터 로드 (한 번만)
+  if(!_homeFoodCache){
+    listBox.innerHTML='<div class="empty" style="padding:20px">맛집을 불러오는 중…</div>';
+    try{ _homeFoodCache=await TL.getSetting('map_places',[]); }catch(e){ _homeFoodCache=[]; }
+  }
+  // 선택 지역의 food만, 리뷰순 상위 10
+  const foods=(_homeFoodCache||[])
+    .filter(p=>p.c==='food' && p.region===_homeFoodRegion)
+    .sort((a,b)=>(b.rc||0)-(a.rc||0))
+    .slice(0,10);
+  if(!foods.length){
+    listBox.innerHTML='<div class="empty" style="padding:20px">이 지역의 맛집 정보가 아직 없습니다.<br><a href="./index.html" style="color:var(--gold)">지도에서 전체 보기 →</a></div>';
+    return;
+  }
+  listBox.innerHTML=foods.map((p,i)=>
+    '<a href="'+(p.pid?'https://www.google.com/maps/place/?q=place_id:'+encodeURIComponent(p.pid):'./index.html')+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:11px;text-decoration:none;padding:10px 6px;border-bottom:1px solid var(--line)">'+
+    '<div style="font-size:15px;font-weight:900;color:var(--gold);width:22px;text-align:center;flex-shrink:0">'+(i+1)+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+    '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.n)+'</div>'+
+    '<div style="font-size:11px;color:var(--sub);margin-top:2px">'+(p.a?esc(p.a):'')+'</div></div>'+
+    '<div style="text-align:right;flex-shrink:0"><div style="font-size:12.5px;font-weight:800;color:#f0b429">⭐ '+(p.r||'-')+'</div>'+
+    '<div style="font-size:10px;color:var(--sub)">리뷰 '+(p.rc||0).toLocaleString()+'</div></div>'+
+    '</a>').join('');
 }
 
 /* 서버 post → 화면 필드 변환 */
