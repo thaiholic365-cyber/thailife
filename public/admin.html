@@ -984,8 +984,9 @@ async function renderContent(){
   const galleryForm=contentBoard!=='gallery'?'':
   '<div style="background:var(--panel2);border:1px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:14px">'+
   '<b style="font-size:13.5px;color:var(--gold)">📷 갤러리 사진 올리기 (관리자)</b>'+
-  '<div class="row2"><div><label>카테고리</label><select id="agCat">'+GCATS_A.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></div>'+
-  '<div><label>사진 * (자동 압축)</label><input type="file" accept="image/*" id="agFile" style="padding:8px;font-size:12px"></div></div>'+
+  '<div class="row2"><div><label>지역</label><select id="agRegion">'+CREGIONS_A.map(r=>'<option>'+r+'</option>').join('')+'</select></div>'+
+  '<div><label>카테고리</label><select id="agCat">'+GCATS_A.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></div></div>'+
+  '<div><label>사진 * (자동 압축)</label><input type="file" accept="image/*" id="agFile" style="padding:8px;font-size:12px"></div>'+
   '<label>사진 설명</label><input id="agCap" maxlength="60" placeholder="예: 왓아룬 야경 🌙">'+
   '<div style="margin-top:12px"><button class="btn btn-gold btn-sm" onclick="saveAdminGallery()">📷 사진 게시</button></div></div>';
 
@@ -1186,7 +1187,7 @@ async function saveAdminGallery(){
   try{
     const url=await TL.uploadImage(f,'gallery');
     await TL.postAdd('gallery',{img:url,title:document.getElementById('agCap').value.trim(),
-      cat:document.getElementById('agCat').value,_asAdmin:true});
+      cat:document.getElementById('agCat').value,region:document.getElementById('agRegion').value,_asAdmin:true});
     toast('사진이 게시되었습니다 📷'); await reloadBoard('gallery'); renderContent();
   }catch(e){ alert(e.message); }
 }

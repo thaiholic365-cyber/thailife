@@ -1314,27 +1314,35 @@ async function savePartner(){
 
 /* ============ 갤러리 ============ */
 const GCATS=[['all','전체','📋'],['night','나이트라이프','🌙'],['sight','관광지','🛕'],['spot','명소','📸'],['food','맛집','🍜'],['coffee','커피','☕'],['spa','마사지·스파','💆'],['etc','기타','✨']];
-let gFilter='all';
+let gFilter='all', gRegionFilter='all';
 function gcatLb(k){ const f=GCATS.find(x=>x[0]===k); return f?f[2]+' '+f[1]:'✨ 기타'; }
 async function renderGallery(){
   _cache.tl_gallery=(await TL.posts('gallery')).map(mapPost);
   const all=S('tl_gallery',[]).filter(p=>!isBlocked(p.author));
-  const list=all.filter(g=>gFilter==='all'||(g.cat||'etc')===gFilter);
+  const list=all.filter(g=>(gFilter==='all'||(g.cat||'etc')===gFilter)&&(gRegionFilter==='all'||(g.region||'')===gRegionFilter));
   const me=getNick();
   const cnt=k=>k==='all'?all.length:all.filter(g=>(g.cat||'etc')===k).length;
   $('main').innerHTML=
-  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📷 갤러리</h2><small>태국의 순간을 카테고리별로 공유하세요</small></div>'+
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📷 갤러리</h2><small>지역·업종별 태국의 순간</small></div>'+
+  '<div style="font-size:11px;color:var(--sub);margin-bottom:5px;font-weight:700">📍 지역</div>'+
+  '<div class="chiprow">'+['all',...REGIONS].map(r=>
+    '<button class="chip'+(gRegionFilter===r?' on':'')+'" onclick="gRegionFilter=\''+r+'\';renderGallery()">'+(r==='all'?'전지역':r)+'</button>').join('')+'</div>'+
+  '<div style="font-size:11px;color:var(--sub);margin:8px 0 5px;font-weight:700">🏷 업종</div>'+
   '<div class="chiprow">'+GCATS.map(cg=>
     '<button class="chip'+(gFilter===cg[0]?' on':'')+'" onclick="gFilter=\''+cg[0]+'\';renderGallery()">'+cg[2]+' '+cg[1]+'<span style="opacity:.6;font-size:10.5px;margin-left:3px">'+cnt(cg[0])+'</span></button>').join('')+'</div>'+
-  '<div class="row2"><div><label class="f">카테고리</label><select class="f" id="gCat" style="margin-top:0">'+
-    GCATS.filter(x=>x[0]!=='all').map(x=>'<option value="'+x[0]+'">'+x[2]+' '+x[1]+'</option>').join('')+'</select></div>'+
-  '<div><label class="f">사진 업로드 (자동 압축)</label><input class="f" type="file" accept="image/*" id="gFile" style="padding:8px;margin-top:0"></div></div>'+
+  '<div style="border-top:1px dashed var(--line);margin-top:12px;padding-top:12px">'+
+  '<div class="row2"><div><label class="f">지역</label><select class="f" id="gRegion" style="margin-top:0">'+
+    REGIONS.map(r=>'<option value="'+r+'">'+r+'</option>').join('')+'</select></div>'+
+  '<div><label class="f">업종</label><select class="f" id="gCat" style="margin-top:0">'+
+    GCATS.filter(x=>x[0]!=='all').map(x=>'<option value="'+x[0]+'">'+x[2]+' '+x[1]+'</option>').join('')+'</select></div></div>'+
+  '<div><label class="f">사진 업로드 (자동 압축)</label><input class="f" type="file" accept="image/*" id="gFile" style="padding:8px;margin-top:0"></div>'+
   '<label class="f">사진 설명</label><input class="f" id="gCap" placeholder="예: 왓아룬 야경 🌙" maxlength="60">'+
-  '<div style="margin-top:12px"><button class="btn btn-gold" onclick="saveGallery()">올리기</button></div></div>'+
+  '<div style="margin-top:12px"><button class="btn btn-gold" onclick="saveGallery()">올리기</button></div></div></div>'+
   '<div class="ggrid">'+
   (list.length?list.map(g=>
     '<div class="gitem" onclick="openLb('+g.ts+')"><img src="'+g.img+'">'+
     '<span style="position:absolute;top:7px;left:7px;background:rgba(20,30,25,.72);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px">'+gcatLb(g.cat||'etc')+'</span>'+
+    (g.region?'<span style="position:absolute;top:7px;right:7px;background:rgba(212,175,55,.9);color:#3a2408;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px">📍 '+esc(g.region)+'</span>':'')+
     '<div class="gcap">'+esc(g.cap||'')+(g.author===me?' <span onclick="event.stopPropagation();delItem(\'tl_gallery\','+g.ts+',renderGallery)" style="color:var(--red);cursor:pointer">✕</span>':'')+'</div></div>'
   ).join(''):'<div class="empty" style="grid-column:1/-1">'+(gFilter==='all'?'아직 사진이 없습니다.<br>첫 사진을 올려주세요! 📸':'이 카테고리에 사진이 없습니다.')+'</div>')+
   '</div>';
@@ -1346,7 +1354,7 @@ async function saveGallery(){
   toast('업로드 중…');
   try{
     const url=await TL.uploadImage(f,'gallery');
-    await TL.postAdd('gallery',{img:url,title:$('gCap').value.trim(),cat:$('gCat').value});
+    await TL.postAdd('gallery',{img:url,title:$('gCap').value.trim(),cat:$('gCat').value,region:$('gRegion').value});
     toast('사진이 등록되었습니다 📷'); await renderGallery();
   }catch(e){ alert(e.message); }
 }
