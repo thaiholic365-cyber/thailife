@@ -889,6 +889,25 @@ function statDetail(kind,key){
 }
 
 /* --- 회원 관리 --- */
+async function dmToMember(nick){
+  const m=cS('tl_members',{})[nick];
+  let memberId=m&&m.id;
+  if(!memberId){
+    // 캐시에 id 없으면 서버에서 조회
+    try{ const list=await TL.memberList(); const f=list.find(x=>x.nick===nick); memberId=f&&f.id; }catch(e){}
+  }
+  if(!memberId){ alert('회원 정보를 찾을 수 없습니다.'); return; }
+  const txt=prompt(nick+' 님에게 보낼 쪽지 내용:');
+  if(!txt||!txt.trim()) return;
+  try{
+    await TL.sendDMToMember(memberId, nick, txt.trim());
+    toast(nick+' 님에게 쪽지를 보냈습니다 ✉️');
+    // 쪽지 탭으로 이동해 대화 열기
+    _dmActive=memberId;
+    commTab('dm');
+  }catch(e){ alert('전송 실패: '+e.message); }
+}
+
 function renderMembers(){
   const m=membersA();
   const names=Object.keys(m).sort((a,b)=>(m[b].lastSeen||0)-(m[a].lastSeen||0));
@@ -916,6 +935,7 @@ function renderMembers(){
     '<td>'+(u.logins||0)+'회</td><td>'+(u.posts||0)+'</td><td>'+(u.chats||0)+'</td>'+
     '<td style="font-size:11.5px;color:var(--sub)">'+esc2(regs)+'</td>'+
     '<td style="white-space:nowrap">'+
+      '<button class="btn btn-gold btn-sm" onclick="dmToMember(\''+esc2(n).replace(/'/g,"\\'")+'\')">✉️ 쪽지</button> '+
       '<button class="btn btn-sm '+(u.blocked?'btn-green':'btn-red')+'" onclick="toggleBlock(\''+esc2(n).replace(/'/g,"\\'")+'\')">'+(u.blocked?'차단 해제':'차단')+'</button> '+
       '<button class="btn btn-red btn-sm" onclick="kickMember(\''+esc2(n).replace(/'/g,"\\'")+'\')">탈퇴</button>'+
     '</td></tr>';
@@ -1755,7 +1775,7 @@ async function bootAdmin(){
   const ms=await TL.members();
   _cache.tl_members={}; _cache.tl_users={};
   ms.forEach(m=>{
-    _cache.tl_members[m.nick]={level:m.level,blocked:m.blocked,posts:m.posts,chats:m.chats,
+    _cache.tl_members[m.nick]={id:m.id,level:m.level,blocked:m.blocked,posts:m.posts,chats:m.chats,
       logins:m.logins,joined:new Date(m.created_at).getTime(),lastSeen:new Date(m.last_seen).getTime(),regions:{}};
     _cache.tl_users[m.nick]={name:m.name,phone:m.phone,email:'',joined:new Date(m.created_at).getTime()};
   });
