@@ -1111,11 +1111,19 @@ async function renderFood(){
   const list=S('tl_food',[]).filter(p=>!isBlocked(p.author)&&(foodRegion==='all'||p.region===foodRegion));
   const me=getNick();
   $('main').innerHTML=
-  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🍜 맛집 추천</h2><small>직접 가본 곳만 추천해주세요</small></div>'+
+  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🍜 맛집 추천</h2><small>구글 인기 맛집 + 회원 추천</small></div>'+
   '<div class="chiprow">'+['all',...REGIONS].map(r=>'<button class="chip'+(foodRegion===r?' on':'')+'" onclick="foodRegion=\''+r+'\';renderFood()">'+(r==='all'?'전지역':r)+'</button>').join('')+'</div>'+
   '<button class="btn btn-gold" onclick="foodForm()">＋ 맛집 추천하기</button>'+
   '<a class="btn btn-line" style="text-decoration:none;margin-left:8px" href="./index.html">🗺 지도에서 맛집 보기</a>'+
   '<div id="foodFormBox"></div></div>'+
+  // 지역별 인기 맛집 (지도 데이터, 리뷰순)
+  '<div class="box" style="margin-bottom:14px;padding:0;overflow:hidden">'+
+  '<div style="display:flex;align-items:center;gap:7px;padding:13px 15px 11px"><span style="font-size:15px">🔥</span>'+
+  '<h3 style="font-size:15px;margin:0;color:var(--gold)">'+(foodRegion==='all'?'전지역':foodRegion)+' 인기 맛집 TOP 10</h3>'+
+  '<span style="font-size:10.5px;color:var(--sub);margin-left:auto">구글 리뷰순</span></div>'+
+  '<div id="foodTopList" style="border-top:1px solid var(--line)"></div></div>'+
+  // 회원 추천 맛집
+  '<div class="box"><div class="section-title" style="margin-bottom:10px"><h3 style="font-size:14px;margin:0">✍️ 회원 추천 맛집</h3></div>'+
   (list.length?list.map(p=>
     '<div class="post" style="border-left-color:var(--c-food)">'+
     '<div class="post-top"><div class="post-title">'+esc(p.title)+'</div><span class="tag" style="background:var(--c-food)">'+esc(p.region)+'</span></div>'+
@@ -1124,7 +1132,38 @@ async function renderFood(){
     '<div class="post-actions">'+
       (p.map?'<a class="btn btn-line btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(p.map)+'">구글맵 →</a>':'')+
       (p.author===me?'<button class="btn btn-red btn-sm" onclick="delItem(\'tl_food\','+p.ts+',renderFood)">삭제</button>':'')+
-    '</div></div>').join(''):'<div class="empty">추천 맛집이 없습니다.<br>첫 추천을 남겨주세요!</div>');
+    '</div></div>').join(''):'<div class="empty">아직 회원 추천 맛집이 없습니다.<br>첫 추천을 남겨주세요!</div>')+'</div>';
+  renderFoodTop();
+}
+
+async function renderFoodTop(){
+  const box=document.getElementById('foodTopList'); if(!box) return;
+  box.innerHTML='<div class="empty" style="padding:18px">인기 맛집을 불러오는 중…</div>';
+  if(!_homeFoodCache){
+    try{ _homeFoodCache=await TL.getSetting('map_places',[]); }catch(e){ _homeFoodCache=[]; }
+  }
+  // 지역명 → id 매핑
+  const nameToId={'방콕':'bkk','파타야':'pty','치앙마이':'cnx','치앙라이':'cri','빠이':'pai','콘깬':'kkc','우돈타니':'udn','부리람':'brm'};
+  let foods=(_homeFoodCache||[]).filter(p=>p.c==='food');
+  if(foodRegion!=='all'){
+    const rid=nameToId[foodRegion];
+    foods=foods.filter(p=>p.region===rid);
+  }
+  foods=foods.sort((a,b)=>(b.rc||0)-(a.rc||0)).slice(0,10);
+  if(!foods.length){
+    box.innerHTML='<div class="empty" style="padding:18px">이 지역의 인기 맛집 정보가 아직 없습니다.</div>';
+    return;
+  }
+  const idToName={bkk:'방콕',pty:'파타야',cnx:'치앙마이',cri:'치앙라이',pai:'빠이',kkc:'콘깬',udn:'우돈타니',brm:'부리람'};
+  box.innerHTML=foods.map((p,i)=>
+    '<a href="'+(p.pid?'https://www.google.com/maps/place/?q=place_id:'+encodeURIComponent(p.pid):'./index.html')+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:11px;text-decoration:none;padding:10px 15px;border-bottom:1px solid var(--line)">'+
+    '<div style="font-size:15px;font-weight:900;color:var(--gold);width:22px;text-align:center;flex-shrink:0">'+(i+1)+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+    '<div style="font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.n)+'</div>'+
+    '<div style="font-size:11px;color:var(--sub);margin-top:2px">'+(foodRegion==='all'&&idToName[p.region]?'📍 '+idToName[p.region]+(p.a?' · '+esc(p.a):''):esc(p.a||''))+'</div></div>'+
+    '<div style="text-align:right;flex-shrink:0"><div style="font-size:12.5px;font-weight:800;color:#f0b429">⭐ '+(p.r||'-')+'</div>'+
+    '<div style="font-size:10px;color:var(--sub)">리뷰 '+(p.rc||0).toLocaleString()+'</div></div>'+
+    '</a>').join('');
 }
 function foodForm(){
   $('foodFormBox').innerHTML=
