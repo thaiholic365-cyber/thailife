@@ -609,8 +609,14 @@ async function renderHome(){
   '</div>'+
 
   '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>🤝 다가오는 정모·번개</h2><small onclick="go(\'meet\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(meets)+'</div></div>'+
-  '<div class="box" style="margin-bottom:14px"><div class="section-title"><h2>📰 최신 뉴스</h2><small onclick="go(\'news\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(news)+'</div></div>'+
+  '<div class="box" style="margin-bottom:14px;padding:0;overflow:hidden">'+
+  '<div style="display:flex;align-items:center;gap:7px;padding:13px 15px 11px">'+
+  '<span style="width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444;animation:pulse 1.6s infinite"></span>'+
+  '<h2 style="font-size:16px;margin:0;color:var(--gold)">실시간 태국 뉴스</h2>'+
+  '<small onclick="go(\'news\')" style="cursor:pointer;margin-left:auto;color:var(--sub)">전체보기 →</small></div>'+
+  '<div id="rssFeedHome" style="border-top:1px solid var(--line)"></div></div>'+
   '<div class="box"><div class="section-title"><h2>🍜 최근 맛집 추천</h2><small onclick="go(\'food\')" style="cursor:pointer">전체보기 →</small></div><div class="feed">'+feed(foods)+'</div></div>';
+  renderThaiNewsHome();
 }
 
 /* 서버 post → 화면 필드 변환 */
@@ -1016,6 +1022,21 @@ async function renderThaiNewsFeed(){
     '<div style="font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.45">'+esc(n.title)+'</div>'+
     (n.desc?'<div style="font-size:11.5px;color:var(--sub);margin-top:4px;line-height:1.5">'+esc(n.desc)+'…</div>':'')+
     '<div style="font-size:10.5px;color:var(--gold);margin-top:5px;font-weight:700">📰 '+esc(n.source)+' · '+rssTimeago(n.date)+' · 원문 보기 →</div>'+
+    '</a>').join('');
+}
+
+async function renderThaiNewsHome(){
+  const box=document.getElementById('rssFeedHome'); if(!box) return;
+  box.innerHTML='<div style="padding:16px;text-align:center;color:var(--sub);font-size:13px">📡 실시간 뉴스를 불러오는 중…</div>';
+  const items=await fetchThaiNews();
+  if(!items||!items.length){
+    box.innerHTML='<div style="padding:14px;text-align:center;color:var(--sub);font-size:12.5px">지금은 실시간 뉴스를 불러올 수 없습니다.<br><a href="https://www.bangkokpost.com/thailand" target="_blank" rel="noopener" style="color:var(--gold)">Bangkok Post에서 직접 보기 →</a></div>';
+    return;
+  }
+  box.innerHTML=items.slice(0,4).map(n=>
+    '<a href="'+esc(n.link)+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;padding:11px 15px;border-bottom:1px solid var(--line)">'+
+    '<div style="font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.45">'+esc(n.title)+'</div>'+
+    '<div style="font-size:10.5px;color:var(--gold);margin-top:4px;font-weight:700">📰 '+esc(n.source)+' · '+rssTimeago(n.date)+' · 원문 보기 →</div>'+
     '</a>').join('');
 }
 
